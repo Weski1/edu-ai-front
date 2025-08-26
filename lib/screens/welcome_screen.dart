@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:praca_inzynierska_front/screens/main_screen.dart';
+import 'package:praca_inzynierska_front/screens/login_screen.dart';
+
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
@@ -29,7 +30,7 @@ class WelcomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
                 );
               },
               child: const Text('Zaczynamy!'),
