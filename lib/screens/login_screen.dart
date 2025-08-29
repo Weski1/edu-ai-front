@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     if (email.isEmpty || password.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Uzupełnij wszystkie pola')),
       );
@@ -36,6 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => MainScreen(token: token)),
       );
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Logowanie nieudane. Sprawdź dane.')),
       );
@@ -70,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (email.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Podaj adres e-mail")),
       );
@@ -81,10 +84,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _resetLoading = false);
 
     if (error == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Jeśli podany e-mail istnieje, wysłaliśmy instrukcje resetu hasła.")),
       );
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
     }
   }

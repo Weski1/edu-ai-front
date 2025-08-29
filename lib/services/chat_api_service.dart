@@ -1,6 +1,8 @@
+// lib/services/chat_api_service.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import 'package:praca_inzynierska_front/models/message.dart';
 import 'package:praca_inzynierska_front/services/api_client_service.dart';
@@ -61,58 +63,121 @@ class ChatApiService {
     }
 
     final bodyTxt = utf8.decode(res.bodyBytes);
-    // debug (zostaw, jeśli chcesz podglądać):
     // ignore: avoid_print
-    print('HISTORIA[$conversationId]: $bodyTxt');
+    // print('HISTORIA[$conversationId]: $bodyTxt');
 
     final decoded = jsonDecode(bodyTxt);
-
-    // Obsłuż zarówno czystą listę, jak i {"messages":[...]} (na przyszłość)
     final List list = decoded is List
         ? decoded
         : (decoded is Map && decoded['messages'] is List
             ? decoded['messages'] as List
             : const []);
 
-    return list
-        .map((j) => ChatMessage.fromJson(j as Map<String, dynamic>))
-        .toList();
+    return list.map((j) => ChatMessage.fromJson(j as Map<String, dynamic>)).toList();
   }
 
-  /// Wysyłka obrazu w konwersacji (multipart/form-data).
-  /// `content` jest opcjonalny – możesz dołączyć tekst usera razem ze zdjęciem.
+  /// Wysyłka obrazu + opcjonalnego tekstu (multipart/form-data).
+  /// Backend zapisze wiadomość USER typu "media" + zwróci odpowiedź AI.
   static Future<ChatMessage> sendImageMessage({
     required int conversationId,
     required File imageFile,
     String? content,
     String? token,
   }) async {
-    final uri = Uri.parse('${ApiClient.baseUrl}/chat/send-image');
+    return sendMultipleImagesMessage(
+      conversationId: conversationId,
+      imageFiles: [imageFile],
+      content: content,
+      token: token,
+    );
+  }
 
+  /// Wysyłka wielu obrazów + opcjonalnego tekstu (multipart/form-data).
+  /// Backend zapisuje wszystkie obrazy jako jedną wiadomość MEDIA z wieloma załącznikami.
+  static Future<ChatMessage> sendMultipleImagesMessage({
+    required int conversationId,
+    required List<File> imageFiles,
+    String? content,
+    String? token,
+  }) async {
+    if (imageFiles.isEmpty) {
+      throw Exception('Brak plików do wysłania');
+    }
+
+    // Najpierw spróbujmy z fallbackiem do starej metody dla pojedynczego pliku
+    if (imageFiles.length == 1) {
+      return await sendImageMessage(
+        conversationId: conversationId,
+        imageFile: imageFiles[0],
+        content: content,
+        token: token,
+      );
+    }
+
+    final uri = Uri.parse('${ApiClient.baseUrl}/chat/send-image');
     final request = http.MultipartRequest('POST', uri);
 
-    // Authorization nagłówek (Bearer)
     if (token != null && token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
     }
 
-    // Pola formularza
     request.fields['conversation_id'] = conversationId.toString();
     if (content != null && content.trim().isNotEmpty) {
       request.fields['content'] = content.trim();
     }
 
-    // Plik
-    request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+    // Dodaj wszystkie pliki jako 'files' (zgodnie z nowym backendem)
+    // Sprawdźmy różne warianty nazewnictwa pól
+    for (int i = 0; i < imageFiles.length; i++) {
+      final file = imageFiles[i];
+      
+      // Określ MIME type na podstawie rozszerzenia
+      String mimeType = 'image/jpeg'; // domyślny
+      final extension = file.path.toLowerCase();
+      if (extension.endsWith('.png')) {
+        mimeType = 'image/png';
+      } else if (extension.endsWith('.webp')) {
+        mimeType = 'image/webp';
+      } else if (extension.endsWith('.gif')) {
+        mimeType = 'image/gif';
+      }
+      
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'files',
+          await file.readAsBytes(),
+          filename: 'image_$i${_getFileExtension(file.path)}',
+          contentType: MediaType.parse(mimeType),
+        )
+      );
+      
+      // print('DEBUG: Added file $i: ${file.path}, MIME: $mimeType');
+    }
+
+    // print('DEBUG: Sending ${imageFiles.length} files');
+    // print('DEBUG: Fields: ${request.fields}');
+    // print('DEBUG: Files count: ${request.files.length}');
 
     final streamed = await request.send();
     final bodyBytes = await streamed.stream.toBytes();
     final bodyTxt = utf8.decode(bodyBytes);
 
+    // print('DEBUG: Status code: ${streamed.statusCode}');
+    // print('DEBUG: Response body: $bodyTxt');
+
     if (streamed.statusCode != 200) {
-      throw Exception('Błąd wysyłania obrazu: ${streamed.statusCode} $bodyTxt');
+      throw Exception('Błąd wysyłania obrazów: ${streamed.statusCode} - $bodyTxt');
     }
 
     return ChatMessage.fromJson(jsonDecode(bodyTxt) as Map<String, dynamic>);
+  }
+
+  /// Pomocnicza funkcja do wydobycia rozszerzenia pliku
+  static String _getFileExtension(String path) {
+    final parts = path.split('.');
+    if (parts.length > 1) {
+      return '.${parts.last.toLowerCase()}';
+    }
+    return '.jpg'; // domyślne
   }
 }
