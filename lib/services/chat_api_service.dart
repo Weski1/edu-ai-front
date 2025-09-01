@@ -172,6 +172,67 @@ class ChatApiService {
     return ChatMessage.fromJson(jsonDecode(bodyTxt) as Map<String, dynamic>);
   }
 
+  /// Pobierz listę konwersacji użytkownika z konkretnym nauczycielem
+  static Future<List<Map<String, dynamic>>> getConversationsByTeacher({
+    required int teacherId,
+    String? token,
+  }) async {
+    print('=== DEBUG getConversationsByTeacher ===');
+    print('Teacher ID: $teacherId');
+    print('Token: ${token != null ? token.substring(0, 20) + '...' : 'null'}');
+    print('Request URL: ${ApiClient.baseUrl}/teachers/$teacherId/conversations');
+    
+    final res = await ApiClient.get(
+      '/teachers/$teacherId/conversations',
+      token: token,
+    );
+
+    print('Response status: ${res.statusCode}');
+    final bodyTxt = utf8.decode(res.bodyBytes);
+    print('Response body: $bodyTxt');
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd pobierania konwersacji: ${res.statusCode} $bodyTxt');
+    }
+
+    final decoded = jsonDecode(bodyTxt);
+    print('Decoded response: $decoded');
+    print('Decoded type: ${decoded.runtimeType}');
+    
+    if (decoded is List) {
+      print('Returning ${decoded.length} conversations as List');
+      return decoded.cast<Map<String, dynamic>>();
+    } else if (decoded is Map && decoded['conversations'] is List) {
+      final conversations = (decoded['conversations'] as List).cast<Map<String, dynamic>>();
+      print('Returning ${conversations.length} conversations from Map');
+      return conversations;
+    } else {
+      print('No conversations found, returning empty list');
+      return [];
+    }
+  }
+
+  /// Pobierz wszystkie konwersacje użytkownika
+  static Future<List<Map<String, dynamic>>> getAllConversations({
+    String? token,
+  }) async {
+    final res = await ApiClient.get('/chat/conversations', token: token);
+
+    if (res.statusCode != 200) {
+      final bodyTxt = utf8.decode(res.bodyBytes);
+      throw Exception('Błąd pobierania konwersacji: ${res.statusCode} $bodyTxt');
+    }
+
+    final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+    if (decoded is List) {
+      return decoded.cast<Map<String, dynamic>>();
+    } else if (decoded is Map && decoded['conversations'] is List) {
+      return (decoded['conversations'] as List).cast<Map<String, dynamic>>();
+    } else {
+      return [];
+    }
+  }
+
   /// Pomocnicza funkcja do wydobycia rozszerzenia pliku
   static String _getFileExtension(String path) {
     final parts = path.split('.');

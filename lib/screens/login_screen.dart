@@ -27,14 +27,15 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     setState(() => _loading = true);
-    final token = await AuthService.login(email, password);
+    final success = await AuthService.loginAndSave(email, password);
     setState(() => _loading = false);
 
-    if (token != null && token.isNotEmpty) {
+    if (success) {
+      final token = await AuthService.getSavedToken();
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => MainScreen(token: token)),
+        MaterialPageRoute(builder: (_) => MainScreen(token: token!)),
       );
     } else {
       if (!mounted) return;

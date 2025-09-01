@@ -77,6 +77,58 @@ class AuthService {
     await prefs.remove('token');
   }
 
+  /// Sprawdź czy token jest ważny
+  static Future<bool> isTokenValid() async {
+    final token = await getSavedToken();
+    if (token == null || token.isEmpty) return false;
+    
+    try {
+      // Dodaj debug info o tokenie
+      print('=== TOKEN DEBUG ===');
+      print('Token length: ${token.length}');
+      print('Token start: ${token.substring(0, 50)}...');
+      
+      final uri = Uri.parse('${ApiClient.baseUrl}/auth/me');
+      final res = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      print('Token validation response: ${res.statusCode}');
+      if (res.statusCode != 200) {
+        print('Token validation error: ${res.body}');
+      }
+      
+      return res.statusCode == 200;
+    } catch (e) {
+      print('Token validation exception: $e');
+      return false;
+    }
+  }
+
+  /// Sprawdź token i wyloguj jeśli nieważny
+  static Future<bool> validateTokenOrLogout() async {
+    final isValid = await isTokenValid();
+    if (!isValid) {
+      await logout();
+    }
+    return isValid;
+  }
+
+  /// Sprawdź czy błąd to wygasły token i wyloguj
+  static bool handleTokenError(String error) {
+    if (error.toLowerCase().contains('token') || 
+        error.toLowerCase().contains('unauthorized') ||
+        error.toLowerCase().contains('wygasł')) {
+      logout();
+      return true;
+    }
+    return false;
+  }
+
   /// Reset hasła (opcjonalny)
   static Future<String?> requestPasswordReset(String email) async {
     final uri = Uri.parse('${ApiClient.baseUrl}/auth/password-reset/request');
