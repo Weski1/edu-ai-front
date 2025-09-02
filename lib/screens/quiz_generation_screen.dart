@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/quiz.dart';
 import '../models/teacher.dart';
+import '../models/conversation.dart';
 import '../services/quiz_api_service.dart';
 import '../services/teachers_api_service.dart';
 import '../services/auth_service.dart';
@@ -422,14 +423,27 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
                 ),
                 value: _selectedConversationId,
                 items: _conversations.map((conversation) {
+                  final conversationObj = Conversation.fromJson(conversation);
                   return DropdownMenuItem<int>(
                     value: conversation['id'],
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Konwersacja #${conversation['id']}'),
                         Text(
-                          'Utworzona: ${_formatDate(DateTime.parse(conversation['created_at']))}',
+                          conversationObj.displayTitle,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        if (conversationObj.subject != null && conversationObj.subject!.isNotEmpty)
+                          Text(
+                            'Przedmiot: ${conversationObj.subject}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.blue,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        Text(
+                          'Utworzona: ${_formatDate(conversationObj.createdAt)}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,

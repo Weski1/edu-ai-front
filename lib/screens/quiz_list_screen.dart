@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/quiz.dart';
 import '../services/quiz_api_service.dart';
-import 'quiz_taking_screen.dart';
+import 'quiz_attempt_screen.dart';
 import 'quiz_generation_screen.dart';
 
 class QuizListScreen extends StatefulWidget {
@@ -78,8 +78,15 @@ class _QuizListScreenState extends State<QuizListScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Błąd podczas usuwania: $e';
+        if (e.toString().contains('Cannot delete quiz with existing attempts')) {
+          errorMessage = 'Nie można usunąć quizu, który ma już rozwiązane próby. Quiz z wynikami nie może być usunięty.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd podczas usuwania: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }
@@ -375,14 +382,25 @@ class _QuizListScreenState extends State<QuizListScreen> {
           ListTile(
             leading: const Icon(Icons.play_arrow),
             title: const Text('Rozpocznij quiz'),
-            onTap: () {
+            onTap: () async {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => QuizTakingScreen(quizId: quiz.id),
-                ),
-              );
+              try {
+                final fullQuiz = await QuizApiService.getQuiz(quiz.id);
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => QuizAttemptScreen(quiz: fullQuiz),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Błąd podczas ładowania quizu: $e')),
+                  );
+                }
+              }
             },
           ),
           if (quiz.bestScore != null)
@@ -455,14 +473,25 @@ class _QuizListScreenState extends State<QuizListScreen> {
             child: const Text('Zamknij'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => QuizTakingScreen(quizId: quiz.id),
-                ),
-              );
+              try {
+                final fullQuiz = await QuizApiService.getQuiz(quiz.id);
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => QuizAttemptScreen(quiz: fullQuiz),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Błąd podczas ładowania quizu: $e')),
+                  );
+                }
+              }
             },
             child: const Text('Spróbuj ponownie'),
           ),

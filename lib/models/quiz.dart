@@ -5,30 +5,61 @@ enum QuestionType {
   shortAnswer('short_answer'),
   calculation('calculation'),
   matching('matching'),
-  ordering('ordering');
+  ordering('ordering'),
+  // AI-graded question types
+  openEnded('open_ended'),
+  mathematicalProof('mathematical_proof'),
+  essay('essay'),
+  graphAnalysis('graph_analysis'),
+  problemSolving('problem_solving');
 
   const QuestionType(this.value);
   final String value;
 
   static QuestionType fromString(String value) {
-    switch (value) {
-      case 'multiple_choice':
-        return QuestionType.multipleChoice;
-      case 'true_false':
-        return QuestionType.trueFalse;
-      case 'fill_in_the_blank':
-        return QuestionType.fillInTheBlank;
-      case 'short_answer':
-        return QuestionType.shortAnswer;
-      case 'calculation':
-        return QuestionType.calculation;
-      case 'matching':
-        return QuestionType.matching;
-      case 'ordering':
-        return QuestionType.ordering;
-      default:
-        return QuestionType.multipleChoice;
+    return QuestionType.values.firstWhere(
+      (type) => type.value == value,
+      orElse: () => QuestionType.multipleChoice,
+    );
+  }
+
+  String get displayName {
+    switch (this) {
+      case QuestionType.multipleChoice:
+        return 'Wybór wielokrotny';
+      case QuestionType.trueFalse:
+        return 'Prawda/Fałsz';
+      case QuestionType.fillInTheBlank:
+        return 'Uzupełnij lukę';
+      case QuestionType.shortAnswer:
+        return 'Krótka odpowiedź';
+      case QuestionType.calculation:
+        return 'Obliczenia';
+      case QuestionType.matching:
+        return 'Dopasowywanie';
+      case QuestionType.ordering:
+        return 'Uporządkowanie';
+      case QuestionType.openEnded:
+        return 'Pytanie otwarte';
+      case QuestionType.mathematicalProof:
+        return 'Dowód matematyczny';
+      case QuestionType.essay:
+        return 'Esej';
+      case QuestionType.graphAnalysis:
+        return 'Analiza wykresu';
+      case QuestionType.problemSolving:
+        return 'Rozwiązywanie problemów';
     }
+  }
+
+  bool get requiresAiGrading {
+    return [
+      QuestionType.openEnded,
+      QuestionType.mathematicalProof,
+      QuestionType.essay,
+      QuestionType.graphAnalysis,
+      QuestionType.problemSolving,
+    ].contains(this);
   }
 }
 
@@ -94,14 +125,18 @@ class Quiz {
 
   factory Quiz.fromJson(Map<String, dynamic> json) {
     return Quiz(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      teacherId: json['teacher_id'] as int,
-      title: json['title'] as String,
-      subject: json['subject'] as String,
-      difficultyLevel: DifficultyLevel.fromString(json['difficulty_level'] as String),
-      totalQuestions: json['total_questions'] as int,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      id: json['id'] as int? ?? 0,
+      userId: json['user_id'] as int? ?? 0,
+      teacherId: json['teacher_id'] as int? ?? 0,
+      title: json['title'] as String? ?? 'Untitled Quiz',
+      subject: json['subject'] as String? ?? 'Unknown',
+      difficultyLevel: json['difficulty_level'] != null 
+          ? DifficultyLevel.fromString(json['difficulty_level'] as String)
+          : DifficultyLevel.medium,
+      totalQuestions: json['total_questions'] as int? ?? 0,
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
       teacherName: json['teacher_name'] as String? ?? '',
       questions: (json['questions'] as List<dynamic>?)
               ?.map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
@@ -138,10 +173,12 @@ class QuizQuestion {
   final QuestionType questionType;
   final String questionText;
   final String correctAnswer;
-  final Map<String, String>? options;
+  final Map<String, dynamic>? options;
   final String? explanation;
   final int points;
   final String? topic;
+  final bool requiresAiGrading;
+  final Map<String, dynamic>? aiGradingCriteria;
 
   QuizQuestion({
     required this.id,
@@ -154,22 +191,26 @@ class QuizQuestion {
     this.explanation,
     this.points = 1,
     this.topic,
+    this.requiresAiGrading = false,
+    this.aiGradingCriteria,
   });
 
   factory QuizQuestion.fromJson(Map<String, dynamic> json) {
     return QuizQuestion(
-      id: json['id'] as int,
-      quizId: json['quiz_id'] as int,
-      questionNumber: json['question_number'] as int,
-      questionType: QuestionType.fromString(json['question_type'] as String),
-      questionText: json['question_text'] as String,
-      correctAnswer: json['correct_answer'] as String,
-      options: json['options'] != null
-          ? Map<String, String>.from(json['options'] as Map)
-          : null,
+      id: json['id'] as int? ?? 0,
+      quizId: json['quiz_id'] as int? ?? 0,
+      questionNumber: json['question_number'] as int? ?? 1,
+      questionType: json['question_type'] != null 
+          ? QuestionType.fromString(json['question_type'] as String)
+          : QuestionType.multipleChoice,
+      questionText: json['question_text'] as String? ?? '',
+      correctAnswer: json['correct_answer'] as String? ?? '',
+      options: json['options'] as Map<String, dynamic>?,
       explanation: json['explanation'] as String?,
       points: json['points'] as int? ?? 1,
       topic: json['topic'] as String?,
+      requiresAiGrading: json['requires_ai_grading'] as bool? ?? false,
+      aiGradingCriteria: json['ai_grading_criteria'] as Map<String, dynamic>?,
     );
   }
 
@@ -185,6 +226,8 @@ class QuizQuestion {
       'explanation': explanation,
       'points': points,
       'topic': topic,
+      'requires_ai_grading': requiresAiGrading,
+      'ai_grading_criteria': aiGradingCriteria,
     };
   }
 }
@@ -220,16 +263,18 @@ class QuizAttempt {
 
   factory QuizAttempt.fromJson(Map<String, dynamic> json) {
     return QuizAttempt(
-      id: json['id'] as int,
-      quizId: json['quiz_id'] as int,
-      userId: json['user_id'] as int,
-      attemptNumber: json['attempt_number'] as int,
-      startedAt: DateTime.parse(json['started_at'] as String),
+      id: json['id'] as int? ?? 0,
+      quizId: json['quiz_id'] as int? ?? 0,
+      userId: json['user_id'] as int? ?? 0,
+      attemptNumber: json['attempt_number'] as int? ?? 1,
+      startedAt: json['started_at'] != null
+          ? DateTime.parse(json['started_at'] as String)
+          : DateTime.now(),
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'] as String)
           : null,
       score: (json['score'] as num?)?.toDouble(),
-      maxScore: (json['max_score'] as num).toDouble(),
+      maxScore: (json['max_score'] as num?)?.toDouble() ?? 0.0,
       percentage: (json['percentage'] as num?)?.toDouble(),
       timeSpentSeconds: json['time_spent_seconds'] as int?,
       isCompleted: json['is_completed'] as bool? ?? false,
@@ -260,44 +305,58 @@ class QuizAttempt {
 
 class QuizAnswer {
   final int id;
-  final int attemptId;
   final int questionId;
   final String? userAnswer;
   final bool isCorrect;
   final double pointsEarned;
   final DateTime answeredAt;
+  final String? aiFeedback;
+  final String? aiStrengths;
+  final String? aiImprovements;
+  final String? imageUrl;
 
   QuizAnswer({
     required this.id,
-    required this.attemptId,
     required this.questionId,
     this.userAnswer,
     required this.isCorrect,
     this.pointsEarned = 0.0,
     required this.answeredAt,
+    this.aiFeedback,
+    this.aiStrengths,
+    this.aiImprovements,
+    this.imageUrl,
   });
 
   factory QuizAnswer.fromJson(Map<String, dynamic> json) {
     return QuizAnswer(
-      id: json['id'] as int,
-      attemptId: json['attempt_id'] as int,
-      questionId: json['question_id'] as int,
+      id: json['id'] as int? ?? 0,
+      questionId: json['question_id'] as int? ?? 0,
       userAnswer: json['user_answer'] as String?,
-      isCorrect: json['is_correct'] as bool,
+      isCorrect: json['is_correct'] as bool? ?? false,
       pointsEarned: (json['points_earned'] as num?)?.toDouble() ?? 0.0,
-      answeredAt: DateTime.parse(json['answered_at'] as String),
+      answeredAt: json['answered_at'] != null
+          ? DateTime.parse(json['answered_at'] as String)
+          : DateTime.now(),
+      aiFeedback: json['ai_feedback'] as String?,
+      aiStrengths: json['ai_strengths'] as String?,
+      aiImprovements: json['ai_improvements'] as String?,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'attempt_id': attemptId,
       'question_id': questionId,
       'user_answer': userAnswer,
       'is_correct': isCorrect,
       'points_earned': pointsEarned,
       'answered_at': answeredAt.toIso8601String(),
+      'ai_feedback': aiFeedback,
+      'ai_strengths': aiStrengths,
+      'ai_improvements': aiImprovements,
+      'image_url': imageUrl,
     };
   }
 }
@@ -327,13 +386,17 @@ class QuizListItem {
 
   factory QuizListItem.fromJson(Map<String, dynamic> json) {
     return QuizListItem(
-      id: json['id'] as int,
-      title: json['title'] as String,
-      subject: json['subject'] as String,
-      difficultyLevel: DifficultyLevel.fromString(json['difficulty_level'] as String),
-      totalQuestions: json['total_questions'] as int,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      teacherName: json['teacher_name'] as String,
+      id: json['id'] as int? ?? 0,
+      title: json['title'] as String? ?? 'Untitled Quiz',
+      subject: json['subject'] as String? ?? 'Unknown',
+      difficultyLevel: json['difficulty_level'] != null 
+          ? DifficultyLevel.fromString(json['difficulty_level'] as String)
+          : DifficultyLevel.medium,
+      totalQuestions: json['total_questions'] as int? ?? 0,
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      teacherName: json['teacher_name'] as String? ?? 'Unknown Teacher',
       bestScore: (json['best_score'] as num?)?.toDouble(),
       attemptsCount: json['attempts_count'] as int? ?? 0,
     );
@@ -381,16 +444,19 @@ class QuizAttemptStart {
 class QuizAnswerSubmit {
   final int questionId;
   final String userAnswer;
+  final String? imageUrl;
 
   QuizAnswerSubmit({
     required this.questionId,
     required this.userAnswer,
+    this.imageUrl,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'question_id': questionId,
       'user_answer': userAnswer,
+      'image_url': imageUrl,
     };
   }
 }

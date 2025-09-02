@@ -12,8 +12,8 @@ class Teacher {
   });
 
   factory Teacher.fromJson(Map<String, dynamic> j) => Teacher(
-        id: j['id'] as int,
-        name: j['name'] as String,
+        id: j['id'] as int? ?? 0,
+        name: j['name'] as String? ?? 'Unknown Teacher',
         subject: j['subject'] as String?,
         avatarUrl: j['avatar_url'] as String?,
       );

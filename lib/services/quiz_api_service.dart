@@ -15,13 +15,13 @@ class QuizApiService {
     final response = await ApiClient.post('/quiz/generate', body: request.toJson(), token: token);
     
     print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
+    print('Response body: ${utf8.decode(response.bodyBytes)}');
     
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
       return Quiz.fromJson(jsonData);
     } else {
-      throw Exception('Failed to generate quiz: ${response.body}');
+      throw Exception('Failed to generate quiz: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
@@ -34,14 +34,14 @@ class QuizApiService {
     
     print('Response status: ${response.statusCode}');
     if (response.statusCode != 200) {
-      print('Response body: ${response.body}');
+      print('Response body: ${utf8.decode(response.bodyBytes)}');
     }
     
     if (response.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(response.body);
+      final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
       return jsonList.map((json) => QuizListItem.fromJson(json)).toList();
     } else {
-      throw Exception('Failed to load quizzes: ${response.body}');
+      throw Exception('Failed to load quizzes: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
@@ -50,10 +50,10 @@ class QuizApiService {
     final response = await ApiClient.get('/quiz/$quizId', token: token);
     
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
       return Quiz.fromJson(jsonData);
     } else {
-      throw Exception('Failed to load quiz: ${response.body}');
+      throw Exception('Failed to load quiz: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
@@ -62,10 +62,10 @@ class QuizApiService {
     final response = await ApiClient.post('/quiz/start', body: request.toJson(), token: token);
     
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
       return QuizAttempt.fromJson(jsonData);
     } else {
-      throw Exception('Failed to start quiz: ${response.body}');
+      throw Exception('Failed to start quiz: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
@@ -74,10 +74,10 @@ class QuizApiService {
     final response = await ApiClient.post('/quiz/submit', body: request.toJson(), token: token);
     
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
       return QuizAttemptResult.fromJson(jsonData);
     } else {
-      throw Exception('Failed to submit quiz: ${response.body}');
+      throw Exception('Failed to submit quiz: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
@@ -86,10 +86,10 @@ class QuizApiService {
     final response = await ApiClient.get('/quiz/attempt/$attemptId', token: token);
     
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
       return QuizAttemptResult.fromJson(jsonData);
     } else {
-      throw Exception('Failed to load attempt result: ${response.body}');
+      throw Exception('Failed to load attempt result: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
@@ -98,10 +98,10 @@ class QuizApiService {
     final response = await ApiClient.get('/quiz/dashboard/stats', token: token);
     
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
+      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
       return DashboardStats.fromJson(jsonData);
     } else {
-      throw Exception('Failed to load dashboard stats: ${response.body}');
+      throw Exception('Failed to load dashboard stats: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
@@ -110,46 +110,25 @@ class QuizApiService {
     final response = await ApiClient.get('/quiz/subjects/$subject/quizzes', token: token);
     
     if (response.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(response.body);
+      final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
       return jsonList.map((json) => QuizListItem.fromJson(json)).toList();
     } else {
-      throw Exception('Failed to load subject quizzes: ${response.body}');
+      throw Exception('Failed to load subject quizzes: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
   static Future<void> deleteQuiz(int quizId) async {
     final token = await AuthService.getSavedToken();
-    final response = await http.delete(
-      Uri.parse('${ApiClient.baseUrl}/quiz/$quizId'),
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      },
-    );
+    final response = await ApiClient.delete('/quiz/$quizId', token: token);
     
-    if (response.statusCode != 200) {
-      throw Exception('Failed to delete quiz: ${response.body}');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Failed to delete quiz: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
   // Pomocnicze metody dla UI
   static String getQuestionTypeDisplayName(QuestionType type) {
-    switch (type) {
-      case QuestionType.multipleChoice:
-        return 'Wielokrotny wybór';
-      case QuestionType.trueFalse:
-        return 'Prawda/Fałsz';
-      case QuestionType.fillInTheBlank:
-        return 'Uzupełnij luki';
-      case QuestionType.shortAnswer:
-        return 'Krótka odpowiedź';
-      case QuestionType.calculation:
-        return 'Obliczenia';
-      case QuestionType.matching:
-        return 'Dopasuj pary';
-      case QuestionType.ordering:
-        return 'Uporządkuj';
-    }
+    return type.displayName;
   }
 
   static String formatDuration(int seconds) {
@@ -174,5 +153,58 @@ class QuizApiService {
     if (percentage >= 60) return '🥉';
     if (percentage >= 50) return '👍';
     return '📚';
+  }
+
+  // Obsługa upload obrazów dla pytań z grafiką
+  static Future<String> uploadQuizImage(String imagePath) async {
+    final token = await AuthService.getSavedToken();
+    
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiClient.baseUrl}/quiz/upload-image'),
+    );
+    
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    
+    request.files.add(await http.MultipartFile.fromPath('file', imagePath));
+    
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(responseBody);
+      return data['image_url'] as String;
+    } else {
+      throw Exception('Failed to upload image: $responseBody');
+    }
+  }
+
+  static Future<List<String>> uploadMultipleQuizImages(List<String> imagePaths) async {
+    final token = await AuthService.getSavedToken();
+    
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiClient.baseUrl}/quiz/upload-multiple-images'),
+    );
+    
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    
+    for (final imagePath in imagePaths) {
+      request.files.add(await http.MultipartFile.fromPath('files', imagePath));
+    }
+    
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(responseBody);
+      return (data['image_urls'] as List).cast<String>();
+    } else {
+      throw Exception('Failed to upload images: $responseBody');
+    }
   }
 }

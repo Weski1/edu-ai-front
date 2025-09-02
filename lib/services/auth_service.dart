@@ -99,7 +99,7 @@ class AuthService {
       
       print('Token validation response: ${res.statusCode}');
       if (res.statusCode != 200) {
-        print('Token validation error: ${res.body}');
+        print('Token validation error: ${utf8.decode(res.bodyBytes)}');
       }
       
       return res.statusCode == 200;

@@ -24,8 +24,17 @@ class ApiClient {
     return http.post(uri, headers: _headers(token), body: jsonEncode(body));
   }
 
+  static Future<http.Response> delete(
+    String path, {
+    String? token,
+  }) {
+    final uri = Uri.parse('$baseUrl$path');
+    return http.delete(uri, headers: _headers(token));
+  }
+
   static Map<String, String> _headers(String? token) => {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json; charset=utf-8',
         if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       };
 }
