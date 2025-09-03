@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:praca_inzynierska_front/screens/teachers_screen.dart';
 import 'package:praca_inzynierska_front/screens/quiz_screen.dart';
 import 'package:praca_inzynierska_front/screens/dashboard_screen.dart';
+import 'package:praca_inzynierska_front/screens/user_profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String token;
@@ -22,10 +23,11 @@ class _HomeScreenState extends State<MainScreen> {
       TeachersScreen(token: widget.token),
       const QuizScreen(),
       const DashboardScreen(),
+      const UserProfileScreen(),
     ];
   }
 
-  final List<String> _titles = const ['Nauczyciele', 'Quiz', 'Statystyki'];
+  final List<String> _titles = const ['Nauczyciele', 'Quiz', 'Statystyki', 'Profil'];
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +42,7 @@ class _HomeScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Nauczyciele'),
           BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quiz'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Statystyki'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
