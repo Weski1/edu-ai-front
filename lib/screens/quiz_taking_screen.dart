@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/quiz.dart';
 import '../services/quiz_api_service.dart';
+import '../widgets/latex_text.dart';
 import 'quiz_result_screen.dart';
 
 class QuizTakingScreen extends StatefulWidget {
@@ -78,6 +79,38 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
   Future<void> _submitQuiz() async {
     if (_currentAttempt == null || _quiz == null) return;
 
+    // Sprawdź czy są puste odpowiedzi AI
+    final emptyAiQuestions = _quiz!.questions
+        .where((q) => q.requiresAiGrading && (_answers[q.id] ?? '').trim().isEmpty)
+        .toList();
+
+    if (emptyAiQuestions.isNotEmpty) {
+      final shouldContinue = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Puste odpowiedzi AI'),
+            content: Text(
+              'Masz ${emptyAiQuestions.length} pytań sprawdzanych przez AI z pustymi odpowiedziami. '
+              'Te pytania otrzymają 0 punktów. Czy chcesz kontynuować?'
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Anuluj'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Kontynuuj'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldContinue != true) return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
@@ -86,17 +119,28 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
       // Przygotuj odpowiedzi
       final answersToSubmit = _quiz!.questions.map((question) {
         final userAnswer = _answers[question.id] ?? '';
+        
+        // Debug info dla każdej odpowiedzi
+        print('DEBUG Submit Taking - Question ${question.id}: "${userAnswer}" (empty: ${userAnswer.isEmpty})');
+        if (question.requiresAiGrading && userAnswer.isEmpty) {
+          print('WARNING: AI question ${question.id} has empty answer but will be graded!');
+        }
+        
         return QuizAnswerSubmit(
           questionId: question.id,
           userAnswer: userAnswer,
         );
       }).toList();
 
+      print('DEBUG Submit Taking - Total answers: ${answersToSubmit.length}');
+      print('DEBUG Submit Taking - Time elapsed (frontend): $_timeElapsed seconds');
+
       // Wyślij quiz
       final result = await QuizApiService.submitQuiz(
         QuizAttemptSubmit(
           attemptId: _currentAttempt!.id,
           answers: answersToSubmit,
+          timeSpentSeconds: _timeElapsed,
         ),
       );
 
@@ -381,8 +425,8 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
           ),
           const SizedBox(height: 16),
           // Treść pytania
-          Text(
-            question.questionText,
+          LaTeXText(
+            text: question.questionText,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,

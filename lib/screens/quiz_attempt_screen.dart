@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import '../models/quiz.dart';
 import '../services/quiz_api_service.dart';
+import '../widgets/latex_text.dart';
 import 'quiz_result_screen.dart';
 
 class QuizAttemptScreen extends StatefulWidget {
@@ -100,6 +101,68 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
   Future<void> _submitQuiz() async {
     if (_isSubmitting || _currentAttempt == null) return;
 
+    print('DEBUG: Starting quiz submission...');
+    
+    // Sprawdź czy są puste odpowiedzi AI
+    final emptyAiQuestions = widget.quiz.questions
+        .where((q) => q.requiresAiGrading && (_userAnswers[q.id] ?? '').trim().isEmpty)
+        .toList();
+
+    print('DEBUG: Checking ${widget.quiz.questions.length} questions for empty AI answers');
+    for (var q in widget.quiz.questions) {
+      final answer = _userAnswers[q.id] ?? '';
+      print('DEBUG: Question ${q.id}: requiresAiGrading=${q.requiresAiGrading}, answer="${answer.isEmpty ? "EMPTY" : answer.substring(0, answer.length < 20 ? answer.length : 20)}"');
+    }
+    print('DEBUG: Found ${emptyAiQuestions.length} empty AI questions: ${emptyAiQuestions.map((q) => q.id).toList()}');
+    print('DEBUG: emptyAiQuestions.isNotEmpty = ${emptyAiQuestions.isNotEmpty}');
+
+    if (emptyAiQuestions.isNotEmpty) {
+      print('DEBUG: Showing AI validation dialog...');
+      
+      try {
+        final shouldContinue = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            print('DEBUG: Inside dialog builder');
+            return AlertDialog(
+              title: const Text('Puste odpowiedzi AI'),
+              content: Text(
+                'Masz ${emptyAiQuestions.length} pytań sprawdzanych przez AI z pustymi odpowiedziami. '
+                'Te pytania otrzymają 0 punktów. Czy chcesz kontynuować?'
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    print('DEBUG: User clicked Cancel in AI dialog');
+                    Navigator.of(context).pop(false);
+                  },
+                  child: const Text('Anuluj'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    print('DEBUG: User clicked Continue in AI dialog');
+                    Navigator.of(context).pop(true);
+                  },
+                  child: const Text('Kontynuuj'),
+                ),
+              ],
+            );
+          },
+        );
+        
+        print('DEBUG: AI dialog result: $shouldContinue');
+        if (shouldContinue != true) {
+          print('DEBUG: User cancelled - returning');
+          return;
+        }
+      } catch (e) {
+        print('DEBUG: Error showing dialog: $e');
+      }
+    } else {
+      print('DEBUG: No empty AI questions found, proceeding directly');
+    }
+
+    print('DEBUG: Proceeding with submission...');
     setState(() {
       _isSubmitting = true;
     });
@@ -108,17 +171,30 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
 
     try {
       final answers = widget.quiz.questions.map((question) {
+        final userAnswer = _userAnswers[question.id] ?? '';
+        final imageUrl = _imageUrls[question.id];
+        
+        // Debug info dla każdej odpowiedzi
+        print('DEBUG Submit - Question ${question.id}: "${userAnswer}" (empty: ${userAnswer.isEmpty})');
+        if (question.requiresAiGrading && userAnswer.isEmpty) {
+          print('WARNING: AI question ${question.id} has empty answer but will be graded!');
+        }
+        
         return QuizAnswerSubmit(
           questionId: question.id,
-          userAnswer: _userAnswers[question.id] ?? '',
-          imageUrl: _imageUrls[question.id], // Dodane dla obrazów
+          userAnswer: userAnswer,
+          imageUrl: imageUrl, // Dodane dla obrazów
         );
       }).toList();
+
+      print('DEBUG Submit - Total answers: ${answers.length}');
+      print('DEBUG Submit - Time spent (frontend): $_timeSpentSeconds seconds');
 
       final result = await QuizApiService.submitQuiz(
         QuizAttemptSubmit(
           attemptId: _currentAttempt!.id,
           answers: answers,
+          timeSpentSeconds: _timeSpentSeconds,
         ),
       );
 
@@ -420,8 +496,8 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
             const SizedBox(height: 16),
 
             // Question text
-            Text(
-              question.questionText,
+            LaTeXText(
+              text: question.questionText,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               textDirection: TextDirection.ltr,
               textAlign: TextAlign.left,

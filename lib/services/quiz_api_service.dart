@@ -71,13 +71,22 @@ class QuizApiService {
 
   static Future<QuizAttemptResult> submitQuiz(QuizAttemptSubmit request) async {
     final token = await AuthService.getSavedToken();
+    print('DEBUG Submit API - Sending timeSpentSeconds: ${request.timeSpentSeconds}');
+    print('DEBUG Submit API - Request JSON: ${jsonEncode(request.toJson())}');
+    
     final response = await ApiClient.post('/quiz/submit', body: request.toJson(), token: token);
     
+    print('DEBUG Submit API - Response status: ${response.statusCode}');
+    final responseBody = utf8.decode(response.bodyBytes);
+    print('DEBUG Submit API - Response body: $responseBody');
+    
     if (response.statusCode == 200) {
-      final jsonData = jsonDecode(utf8.decode(response.bodyBytes));
-      return QuizAttemptResult.fromJson(jsonData);
+      final jsonData = jsonDecode(responseBody);
+      final result = QuizAttemptResult.fromJson(jsonData);
+      print('DEBUG Submit API - Received timeSpentSeconds: ${result.timeSpentSeconds}');
+      return result;
     } else {
-      throw Exception('Failed to submit quiz: ${utf8.decode(response.bodyBytes)}');
+      throw Exception('Failed to submit quiz: $responseBody');
     }
   }
 
@@ -132,9 +141,27 @@ class QuizApiService {
   }
 
   static String formatDuration(int seconds) {
+    // Naprawka dla nieprawidłowych wartości czasu (np. ujemnych)
+    if (seconds < 0) {
+      print('Warning: Received negative time value: $seconds seconds. Using absolute value.');
+      seconds = seconds.abs();
+    }
+    
+    // Debug info
+    print('DEBUG formatDuration: input seconds = $seconds');
+    
     final minutes = seconds ~/ 60;
     final remainingSeconds = seconds % 60;
-    return '${minutes}m ${remainingSeconds}s';
+    
+    String formattedTime;
+    if (minutes > 0) {
+      formattedTime = '${minutes}m ${remainingSeconds}s';
+    } else {
+      formattedTime = '${remainingSeconds}s';
+    }
+    
+    print('DEBUG formatDuration: output = $formattedTime');
+    return formattedTime;
   }
 
   static String getPerformanceLevel(double percentage) {

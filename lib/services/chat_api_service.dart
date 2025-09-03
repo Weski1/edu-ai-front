@@ -180,10 +180,10 @@ class ChatApiService {
     print('=== DEBUG getConversationsByTeacher ===');
     print('Teacher ID: $teacherId');
     print('Token: ${token != null ? token.substring(0, 20) + '...' : 'null'}');
-    print('Request URL: ${ApiClient.baseUrl}/teachers/$teacherId/conversations');
+    print('Request URL: ${ApiClient.baseUrl}/chat/teachers/$teacherId/conversations');
     
     final res = await ApiClient.get(
-      '/teachers/$teacherId/conversations',
+      '/chat/teachers/$teacherId/conversations',
       token: token,
     );
 

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:praca_inzynierska_front/models/teacher.dart';
 import 'package:praca_inzynierska_front/services/teachers_api_service.dart';
-import 'package:praca_inzynierska_front/services/chat_api_service.dart';
-import 'package:praca_inzynierska_front/screens/chat_screen.dart';
+import 'package:praca_inzynierska_front/screens/conversation_list_screen.dart';
 
 class TeachersScreen extends StatefulWidget {
   const TeachersScreen({super.key, this.token});
@@ -62,41 +61,20 @@ class _TeachersScreenState extends State<TeachersScreen> {
     await _loadMore();
   }
 
-  Future<void> _openChat(Teacher t) async {
-    // szybka obrona przed brakiem tokenu:
-    if (widget.token == null || widget.token!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Brak tokenu – zaloguj się ponownie.')),
-      );
-      return;
-    }
-
-    try {
-      final conversationId = await ChatApiService.startConversation(
-        teacherId: t.id,
+  void _openTeacherConversations(Teacher teacher) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ConversationListScreen(
+        teacher: teacher,
         token: widget.token,
-      );
-      if (!mounted) return;
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          conversationId: conversationId,
-          teacherName: t.name,
-          token: widget.token,
-        ),
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udało się rozpocząć rozmowy: $e')),
-      );
-    }
+      ),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wybierz nauczyciela'),
+        title: const Text('Wybierz nauczyciela do rozmowy'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
@@ -140,8 +118,21 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 child: t.avatarUrl == null ? Text(t.name[0]) : null,
               ),
               title: Text(t.name),
-              subtitle: Text(t.subject ?? 'Nauczyciel'),
-              onTap: () => _openChat(t),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.subject ?? 'Nauczyciel'),
+                  Text(
+                    'Naciśnij, aby zobaczyć konwersacje',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+              onTap: () => _openTeacherConversations(t),
             );
           },
         ),

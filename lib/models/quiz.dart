@@ -464,16 +464,19 @@ class QuizAnswerSubmit {
 class QuizAttemptSubmit {
   final int attemptId;
   final List<QuizAnswerSubmit> answers;
+  final int timeSpentSeconds;
 
   QuizAttemptSubmit({
     required this.attemptId,
     required this.answers,
+    required this.timeSpentSeconds,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'attempt_id': attemptId,
       'answers': answers.map((a) => a.toJson()).toList(),
+      'time_spent_seconds': timeSpentSeconds,
     };
   }
 }
