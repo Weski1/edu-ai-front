@@ -3,9 +3,12 @@ import '../models/quiz.dart';
 import '../services/quiz_api_service.dart';
 import 'quiz_attempt_screen.dart';
 import 'quiz_generation_screen.dart';
+import 'quiz_attempts_detail_screen.dart';
 
 class QuizListScreen extends StatefulWidget {
-  const QuizListScreen({super.key});
+  final bool showAppBar;
+  
+  const QuizListScreen({super.key, this.showAppBar = true});
 
   @override
   State<QuizListScreen> createState() => _QuizListScreenState();
@@ -17,6 +20,18 @@ class _QuizListScreenState extends State<QuizListScreen> {
   String? _error;
   String _selectedSubject = 'Wszystkie';
   final List<String> _subjects = ['Wszystkie', 'Matematyka', 'Historia', 'Angielski', 'Biologia'];
+
+  void _navigateToQuizReview(QuizListItem quiz) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuizAttemptsDetailScreen(
+          quizId: quiz.id,
+          quizTitle: quiz.title,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -95,7 +110,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: widget.showAppBar ? AppBar(
         title: const Text('Moje Quizy'),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
@@ -115,7 +130,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
             },
           ),
         ],
-      ),
+      ) : null,
       body: Column(
         children: [
           // Filtr przedmiotów
@@ -403,7 +418,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
               }
             },
           ),
-          if (quiz.bestScore != null)
+          if (quiz.bestScore != null) ...[
             ListTile(
               leading: const Icon(Icons.assessment),
               title: const Text('Zobacz najlepszy wynik'),
@@ -412,6 +427,15 @@ class _QuizListScreenState extends State<QuizListScreen> {
                 _showBestScoreDetails(quiz);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.visibility),
+              title: const Text('Przegląd wyników'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToQuizReview(quiz);
+              },
+            ),
+          ],
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Szczegóły quiz'),

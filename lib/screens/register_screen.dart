@@ -52,29 +52,104 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Rejestracja', textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              TextField(controller: _firstNameController, decoration: const InputDecoration(labelText: 'Imię', border: OutlineInputBorder())),
-              const SizedBox(height: 16),
-              TextField(controller: _lastNameController, decoration: const InputDecoration(labelText: 'Nazwisko', border: OutlineInputBorder())),
-              const SizedBox(height: 16),
-              TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'E-mail', border: OutlineInputBorder())),
-              const SizedBox(height: 16),
-              TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Hasło', border: OutlineInputBorder())),
-              const SizedBox(height: 16),
-              TextField(controller: _confirmController, obscureText: true, decoration: const InputDecoration(labelText: 'Powtórz hasło', border: OutlineInputBorder())),
-              const SizedBox(height: 24),
-              ElevatedButton(onPressed: _loading ? null : _register, child: _loading ? const CircularProgressIndicator() : const Text('Zarejestruj się')),
-              const SizedBox(height: 12),
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Masz już konto? Zaloguj się')),
-            ],
+          child: Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person_add_outlined,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Rejestracja', 
+                    textAlign: TextAlign.center, 
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onBackground,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  TextField(
+                    controller: _firstNameController, 
+                    decoration: InputDecoration(
+                      labelText: 'Imię', 
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.person_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _lastNameController, 
+                    decoration: InputDecoration(
+                      labelText: 'Nazwisko', 
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.person_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _emailController, 
+                    keyboardType: TextInputType.emailAddress, 
+                    decoration: InputDecoration(
+                      labelText: 'E-mail', 
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _passwordController, 
+                    obscureText: true, 
+                    decoration: InputDecoration(
+                      labelText: 'Hasło', 
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.lock_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _confirmController, 
+                    obscureText: true, 
+                    decoration: InputDecoration(
+                      labelText: 'Powtórz hasło', 
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: _loading ? null : _register, 
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _loading 
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Zarejestruj się', style: TextStyle(fontSize: 16)),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context), 
+                    child: const Text('Masz już konto? Zaloguj się'),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

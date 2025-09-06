@@ -506,17 +506,27 @@ class QuizAttemptResult {
 
   factory QuizAttemptResult.fromJson(Map<String, dynamic> json) {
     return QuizAttemptResult(
-      id: json['id'] as int,
-      quizId: json['quiz_id'] as int,
-      score: (json['score'] as num).toDouble(),
-      maxScore: (json['max_score'] as num).toDouble(),
-      percentage: (json['percentage'] as num).toDouble(),
-      timeSpentSeconds: json['time_spent_seconds'] as int,
-      correctAnswers: json['correct_answers'] as int,
-      totalQuestions: json['total_questions'] as int,
-      answers: (json['answers'] as List<dynamic>)
-          .map((a) => QuizAnswer.fromJson(a as Map<String, dynamic>))
-          .toList(),
+      id: json['id'] as int? ?? 0,
+      quizId: json['quiz_id'] as int? ?? 0,
+      score: json['score'] != null ? (json['score'] as num).toDouble() : 0.0,
+      maxScore: json['max_score'] != null ? (json['max_score'] as num).toDouble() : 0.0,
+      percentage: json['percentage'] != null ? (json['percentage'] as num).toDouble() : 0.0,
+      timeSpentSeconds: json['time_spent_seconds'] as int? ?? 0,
+      correctAnswers: json['correct_answers'] as int? ?? 0,
+      totalQuestions: json['total_questions'] as int? ?? 0,
+      answers: (json['answers'] as List<dynamic>?)
+          ?.map((a) => QuizAnswer.fromJson(a as Map<String, dynamic>))
+          .toList() ?? [],
     );
   }
+}
+
+class QuizReviewData {
+  final Quiz quiz;
+  final QuizAttemptResult attemptResult;
+
+  QuizReviewData({
+    required this.quiz,
+    required this.attemptResult,
+  });
 }

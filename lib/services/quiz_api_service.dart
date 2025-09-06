@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/quiz.dart';
 import '../models/quiz_stats.dart';
+import '../models/quiz_attempts.dart';
 import 'api_client_service.dart';
 import 'auth_service.dart';
 
@@ -99,6 +100,52 @@ class QuizApiService {
       return QuizAttemptResult.fromJson(jsonData);
     } else {
       throw Exception('Failed to load attempt result: ${utf8.decode(response.bodyBytes)}');
+    }
+  }
+
+  static Future<QuizAttemptResult?> getLastAttemptResult(int quizId) async {
+    // DEPRECATED: This endpoint no longer exists in backend
+    // Use getQuizDetailsWithAttempts instead
+    try {
+      final details = await getQuizDetailsWithAttempts(quizId);
+      if (details.attempts.isNotEmpty) {
+        // Return the most recent completed attempt
+        final recentAttempt = details.attempts.last;
+        if (recentAttempt.isCompleted) {
+          // Calculate total possible points
+          final maxScore = recentAttempt.questions.length * 1.0; // Assuming 1 point per question
+          
+          // Convert to QuizAttemptResult format
+          return QuizAttemptResult(
+            id: recentAttempt.id,
+            quizId: quizId,
+            score: recentAttempt.score,
+            maxScore: maxScore,
+            percentage: recentAttempt.percentage,
+            timeSpentSeconds: 0, // Not available in this model
+            correctAnswers: recentAttempt.questions.where((q) => q.userAnswer?.isCorrect == true).length,
+            totalQuestions: recentAttempt.questions.length,
+            answers: recentAttempt.questions
+                .where((q) => q.userAnswer != null)
+                .map((q) => QuizAnswer(
+                  id: 0, // Not available in this context
+                  questionId: 0, // Not available in this model
+                  userAnswer: q.userAnswer!.userAnswer,
+                  isCorrect: q.userAnswer!.isCorrect,
+                  pointsEarned: q.userAnswer!.pointsEarned,
+                  answeredAt: DateTime.now(),
+                  aiFeedback: null, // Not available in this model
+                  aiStrengths: null, // Not available in this model
+                  aiImprovements: null, // Not available in this model
+                ))
+                .toList(),
+          );
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error in getLastAttemptResult: $e');
+      return null;
     }
   }
 
@@ -232,6 +279,136 @@ class QuizApiService {
       return (data['image_urls'] as List).cast<String>();
     } else {
       throw Exception('Failed to upload images: $responseBody');
+    }
+  }
+
+  /// Pobranie szczegółów quizu z ostatnim podejściem
+  static Future<QuizReviewData> getQuizDetails(int quizId) async {
+    final token = await AuthService.getSavedToken();
+    
+    print('=== QUIZ DETAILS API DEBUG ===');
+    print('Getting quiz and last attempt for quiz ID: $quizId');
+    print('Token: ${token != null ? 'Present' : 'null'}');
+    
+    try {
+      // Pobieramy podstawowe informacje o quizie
+      final quizResponse = await ApiClient.get('/quiz/$quizId', token: token);
+      if (quizResponse.statusCode != 200) {
+        throw Exception('Nie udało się pobrać informacji o quizie');
+      }
+      
+      final quiz = Quiz.fromJson(jsonDecode(utf8.decode(quizResponse.bodyBytes)));
+      
+      // Pobieramy ostatnie podejście
+      final attemptResult = await getLastAttemptResult(quizId);
+      
+      if (attemptResult == null) {
+        throw Exception('Brak podejść do tego quizu');
+      }
+      
+      return QuizReviewData(
+        quiz: quiz,
+        attemptResult: attemptResult,
+      );
+      
+    } catch (e) {
+      print('Error getting quiz details: $e');
+      throw Exception('Błąd podczas pobierania szczegółów quizu: $e');
+    }
+  }
+
+  /// Pobranie listy quizów z podejściami użytkownika - używamy istniejącego endpointu
+  static Future<List<QuizAttemptListItem>> getMyAttempts({int limit = 20, int offset = 0}) async {
+    final token = await AuthService.getSavedToken();
+    
+    print('=== MY ATTEMPTS API DEBUG ===');
+    print('Getting my quiz attempts via /quiz/my-quizzes endpoint');
+    print('Token: ${token != null ? 'Present' : 'null'}');
+    
+    try {
+      // Używamy istniejącego endpointu dla moich quizów
+      final response = await ApiClient.get('/quiz/my-quizzes', token: token);
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${utf8.decode(response.bodyBytes)}');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<QuizListItem> quizzes = jsonList.map((json) => QuizListItem.fromJson(json)).toList();
+        
+        // Dla każdego quizu sprawdzamy czy ma podejście
+        final List<QuizAttemptListItem> attemptsWithResults = [];
+        
+        for (final quiz in quizzes) {
+          try {
+            final lastAttempt = await getLastAttemptResult(quiz.id);
+            if (lastAttempt != null) {
+              attemptsWithResults.add(QuizAttemptListItem(
+                id: quiz.id,
+                title: quiz.title,
+                subject: quiz.subject,
+                difficultyLevel: quiz.difficultyLevel.value,
+                totalQuestions: quiz.totalQuestions,
+                createdAt: quiz.createdAt,
+                teacherName: quiz.teacherName,
+                bestScore: lastAttempt.score,
+                attemptsCount: 1, // Na razie tylko ostatnie podejście
+              ));
+            }
+          } catch (e) {
+            // Quiz bez podejść - pomijamy
+            print('Quiz ${quiz.id} nie ma podejść: $e');
+          }
+        }
+        
+        return attemptsWithResults;
+      } else if (response.statusCode == 401) {
+        await AuthService.logout();
+        throw Exception('Sesja wygasła. Zaloguj się ponownie.');
+      } else {
+        throw Exception('Błąd podczas pobierania listy podejść');
+      }
+    } catch (e) {
+      print('Error in getMyAttempts: $e');
+      throw Exception('Błąd podczas pobierania listy podejść: $e');
+    }
+  }
+
+  /// Pobranie szczegółów quizu z podejściami - używamy endpointu /quiz/details/{quiz_id}
+  static Future<QuizDetailsResponse> getQuizDetailsWithAttempts(int quizId) async {
+    final token = await AuthService.getSavedToken();
+    
+    print('=== QUIZ DETAILS WITH ATTEMPTS API DEBUG ===');
+    print('Getting quiz details for quiz ID: $quizId via /quiz/details/$quizId');
+    print('Token: ${token != null ? 'Present' : 'null'}');
+    
+    try {
+      // POPRAWIONY URL - używamy /quiz/details zamiast /quizzes/details
+      final response = await ApiClient.get('/quiz/details/$quizId', token: token);
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${utf8.decode(response.bodyBytes)}');
+      
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(utf8.decode(response.bodyBytes));
+        return QuizDetailsResponse.fromJson(jsonData);
+      } else if (response.statusCode == 401) {
+        await AuthService.logout();
+        throw Exception('Sesja wygasła. Zaloguj się ponownie.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Quiz nie został znaleziony lub nie ma podejść');
+      } else {
+        throw Exception('Błąd podczas pobierania szczegółów quizu');
+      }
+      
+    } catch (e) {
+      print('Error getting quiz details with attempts: $e');
+      if (e.toString().contains('401')) {
+        await AuthService.logout();
+        throw Exception('Sesja wygasła. Zaloguj się ponownie.');
+      } else {
+        throw Exception('Błąd podczas pobierania szczegółów quizu: $e');
+      }
     }
   }
 }
