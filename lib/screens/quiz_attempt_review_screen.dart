@@ -16,7 +16,7 @@ class QuizAttemptReviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(quizTitle),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        // Remove the hardcoded background color to use theme
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -33,6 +33,21 @@ class QuizAttemptReviewScreen extends StatelessWidget {
   }
 
   Widget _buildAttemptSummary(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    // Adaptive colors for percentage badge
+    final isPassingScore = attempt.percentage >= 50;
+    final badgeColor = isPassingScore 
+        ? (isDark ? Colors.green.shade600 : Colors.green.shade100)
+        : (isDark ? Colors.red.shade600 : Colors.red.shade100);
+    final badgeTextColor = isPassingScore
+        ? (isDark ? Colors.green.shade100 : Colors.green.shade700)
+        : (isDark ? Colors.red.shade100 : Colors.red.shade700);
+    final badgeBorderColor = isPassingScore
+        ? (isDark ? Colors.green.shade400 : Colors.green.shade300)
+        : (isDark ? Colors.red.shade400 : Colors.red.shade300);
+    
     return Card(
       elevation: 2,
       child: Padding(
@@ -44,7 +59,7 @@ class QuizAttemptReviewScreen extends StatelessWidget {
               children: [
                 Text(
                   'Podejście ${attempt.attemptNumber}',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -52,16 +67,14 @@ class QuizAttemptReviewScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: attempt.percentage >= 50 ? Colors.green.shade100 : Colors.red.shade100,
+                    color: badgeColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: attempt.percentage >= 50 ? Colors.green.shade300 : Colors.red.shade300,
-                    ),
+                    border: Border.all(color: badgeBorderColor),
                   ),
                   child: Text(
                     '${attempt.percentage.toStringAsFixed(1)}%',
                     style: TextStyle(
-                      color: attempt.percentage >= 50 ? Colors.green.shade700 : Colors.red.shade700,
+                      color: badgeTextColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -75,24 +88,28 @@ class QuizAttemptReviewScreen extends StatelessWidget {
             // Wynik punktowy
             Text(
               'Wynik: ${attempt.score.toStringAsFixed(1)} punktów',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: theme.textTheme.headlineSmall,
             ),
             
             const SizedBox(height: 8),
             
-            // Status
+            // Status with theme-aware colors
             Row(
               children: [
                 Icon(
                   attempt.isCompleted ? Icons.check_circle : Icons.pending,
                   size: 18,
-                  color: attempt.isCompleted ? Colors.green : Colors.orange,
+                  color: attempt.isCompleted 
+                      ? (isDark ? Colors.green.shade400 : Colors.green) 
+                      : (isDark ? Colors.orange.shade400 : Colors.orange),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   attempt.isCompleted ? 'Ukończone' : 'W trakcie',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: attempt.isCompleted ? Colors.green : Colors.orange,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: attempt.isCompleted 
+                        ? (isDark ? Colors.green.shade400 : Colors.green) 
+                        : (isDark ? Colors.orange.shade400 : Colors.orange),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -125,11 +142,21 @@ class QuizAttemptReviewScreen extends StatelessWidget {
   }
 
   Widget _buildQuestionCard(BuildContext context, QuizDetailQuestion question, int questionNumber) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final userAnswer = question.userAnswer;
     final isCorrect = userAnswer?.isCorrect ?? false;
-    final cardColor = isCorrect ? Colors.green.shade50 : Colors.red.shade50;
-    final borderColor = isCorrect ? Colors.green : Colors.red;
-    final iconColor = isCorrect ? Colors.green : Colors.red;
+    
+    // Theme-aware colors for cards
+    final cardColor = isCorrect 
+        ? (isDark ? Colors.green.shade900.withOpacity(0.3) : Colors.green.shade50)
+        : (isDark ? Colors.red.shade900.withOpacity(0.3) : Colors.red.shade50);
+    final borderColor = isCorrect 
+        ? (isDark ? Colors.green.shade400 : Colors.green) 
+        : (isDark ? Colors.red.shade400 : Colors.red);
+    final iconColor = isCorrect 
+        ? (isDark ? Colors.green.shade400 : Colors.green) 
+        : (isDark ? Colors.red.shade400 : Colors.red);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -154,7 +181,7 @@ class QuizAttemptReviewScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   'Pytanie $questionNumber',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     color: iconColor,
                     fontWeight: FontWeight.bold,
                   ),
@@ -162,7 +189,7 @@ class QuizAttemptReviewScreen extends StatelessWidget {
                 const Spacer(),
                 Text(
                   '${userAnswer?.pointsEarned.toStringAsFixed(1) ?? '0.0'} pkt',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: iconColor,
                     fontWeight: FontWeight.bold,
                   ),
@@ -174,19 +201,23 @@ class QuizAttemptReviewScreen extends StatelessWidget {
             // Tekst pytania
             Text(
               question.questionText,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             
-            // Odpowiedź użytkownika
+            // Odpowiedź użytkownika with adaptive colors
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isCorrect ? Colors.green.shade100 : Colors.red.shade100,
+                color: isCorrect 
+                    ? (isDark ? Colors.green.shade800.withOpacity(0.4) : Colors.green.shade100)
+                    : (isDark ? Colors.red.shade800.withOpacity(0.4) : Colors.red.shade100),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: isCorrect ? Colors.green.shade300 : Colors.red.shade300,
+                  color: isCorrect 
+                      ? (isDark ? Colors.green.shade400 : Colors.green.shade300)
+                      : (isDark ? Colors.red.shade400 : Colors.red.shade300),
                 ),
               ),
               child: Column(
@@ -194,7 +225,7 @@ class QuizAttemptReviewScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Twoja odpowiedź:',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: iconColor,
                     ),
@@ -202,7 +233,7 @@ class QuizAttemptReviewScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     userAnswer?.userAnswer ?? 'Brak odpowiedzi',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: theme.textTheme.bodyMedium,
                   ),
                 ],
               ),
@@ -215,24 +246,28 @@ class QuizAttemptReviewScreen extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade100,
+                  color: isDark 
+                      ? Colors.green.shade800.withOpacity(0.4)
+                      : Colors.green.shade100,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.green.shade300),
+                  border: Border.all(
+                    color: isDark ? Colors.green.shade400 : Colors.green.shade300,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Prawidłowa odpowiedź:',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.green,
+                        color: isDark ? Colors.green.shade400 : Colors.green,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       question.correctAnswer,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ],
                 ),
@@ -241,28 +276,35 @@ class QuizAttemptReviewScreen extends StatelessWidget {
             
             const SizedBox(height: 12),
             
-            // Wyjaśnienie
+            // Wyjaśnienie with adaptive colors
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: isDark 
+                    ? Colors.blue.shade900.withOpacity(0.3)
+                    : Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(
+                  color: isDark ? Colors.blue.shade400 : Colors.blue.shade200,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.lightbulb_outline, 
-                        color: Colors.blue, size: 18),
+                      Icon(
+                        Icons.lightbulb_outline, 
+                        color: isDark ? Colors.blue.shade400 : Colors.blue, 
+                        size: 18,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Wyjaśnienie:',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+                          color: isDark ? Colors.blue.shade400 : Colors.blue,
                         ),
                       ),
                     ],
@@ -270,8 +312,8 @@ class QuizAttemptReviewScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     question.explanation,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[700],
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

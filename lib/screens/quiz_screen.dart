@@ -10,24 +10,32 @@ class QuizScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Quizy'),
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white,
-          bottom: const TabBar(
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            tabs: [
-              Tab(icon: Icon(Icons.quiz), text: 'Moje quizy'),
-              Tab(icon: Icon(Icons.assignment_turned_in), text: 'Rozwiązane'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
+        body: Column(
           children: [
-            QuizListScreen(showAppBar: false),
-            QuizAttemptsListScreen(showAppBar: false),
+            // Custom tab bar without the ugly AppBar
+            Container(
+              padding: const EdgeInsets.only(top: 8),
+              child: TabBar(
+                indicatorColor: Theme.of(context).colorScheme.primary,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
+                tabs: const [
+                  Tab(icon: Icon(Icons.quiz), text: 'Moje quizy'),
+                  Tab(icon: Icon(Icons.assignment_turned_in), text: 'Rozwiązane'),
+                ],
+              ),
+            ),
+            // Tab view content
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  QuizListScreen(showAppBar: false),
+                  QuizAttemptsListScreen(showAppBar: false),
+                ],
+              ),
+            ),
           ],
         ),
       ),

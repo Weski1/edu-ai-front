@@ -416,7 +416,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildBubble(ChatMessage m) {
     final isUser = m.isUser;
-    final bubbleColor = isUser ? Colors.blue[100] : Colors.grey[200];
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    // Responsive bubble colors based on theme
+    final bubbleColor = isUser 
+        ? (isDark ? theme.colorScheme.primary.withOpacity(0.8) : Colors.blue[100])
+        : (isDark ? theme.colorScheme.surfaceContainerHighest : Colors.grey[200]);
+    
+    // Text color for bubble content
+    final textColor = isUser && isDark ? Colors.white : null;
 
     final inner = m.isMedia
         ? _buildMediaAttachments(
@@ -424,7 +433,10 @@ class _ChatScreenState extends State<ChatScreen> {
             localPendingFiles:
                 (m.id < 0 && _pendingImages.isNotEmpty) ? _pendingImages : null,
           )
-        : Text(m.content);
+        : Text(
+            m.content,
+            style: TextStyle(color: textColor),
+          );
 
     return Container(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -434,7 +446,10 @@ class _ChatScreenState extends State<ChatScreen> {
             isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Text(isUser ? 'Ty' : 'AI',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              style: TextStyle(
+                fontSize: 12, 
+                color: theme.colorScheme.onSurfaceVariant,
+              )),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -445,7 +460,10 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 4),
           Text(_formatTime(m.createdAt),
-              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              style: TextStyle(
+                fontSize: 11, 
+                color: theme.colorScheme.onSurfaceVariant,
+              )),
         ],
       ),
     );
@@ -475,7 +493,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: Text(
                             _formatDate(m.createdAt),
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -507,7 +525,9 @@ class _ChatScreenState extends State<ChatScreen> {
                         Expanded(
                           child: Text(
                             'Wybrano ${_pendingImages.length} obraz${_pendingImages.length == 1 ? '' : (_pendingImages.length < 5 ? 'y' : 'ów')}. Wyślij, aby przesłać.',
-                            style: TextStyle(color: Colors.grey[700]),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                         IconButton(
@@ -600,7 +620,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   IconButton(
                     onPressed: _busy ? null : _send,
                     icon: const Icon(Icons.send),
-                    color: Colors.blue,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ],
               ),
