@@ -112,6 +112,133 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
     ).then((_) => _loadConversations()); // Odśwież listę po powrocie
   }
 
+  Future<void> _showRenameDialog(Conversation conversation) async {
+    final TextEditingController controller = TextEditingController(
+      text: conversation.title ?? conversation.topic ?? '',
+    );
+    
+    final result = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Zmień nazwę konwersacji'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Nowa nazwa',
+              hintText: 'Wprowadź nazwę konwersacji',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+            maxLength: 100,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Anuluj'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final newTitle = controller.text.trim();
+                if (newTitle.isNotEmpty) {
+                  Navigator.of(context).pop(newTitle);
+                }
+              },
+              child: const Text('Zapisz'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null && result.isNotEmpty) {
+      await _renameConversation(conversation.id, result);
+    }
+  }
+
+  Future<void> _renameConversation(int conversationId, String newTitle) async {
+    try {
+      await ChatApiService.renameConversation(
+        conversationId: conversationId,
+        newTitle: newTitle,
+        token: widget.token,
+      );
+      
+      // Odśwież listę konwersacji
+      await _loadConversations();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nazwa konwersacji została zmieniona'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Błąd zmiany nazwy: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showConversationOptions(Conversation conversation) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                conversation.displayTitle,
+                style: Theme.of(context).textTheme.titleMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Zmień nazwę'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showRenameDialog(conversation);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.chat),
+                title: const Text('Otwórz konwersację'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _openConversation(conversation);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   String _formatDate(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
@@ -155,14 +282,49 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: Colors.grey[600]),
         ),
-        trailing: Text(
-          _formatDate(conversation.createdAt),
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 12,
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _formatDate(conversation.createdAt),
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'rename') {
+                  _showRenameDialog(conversation);
+                } else if (value == 'open') {
+                  _openConversation(conversation);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem<String>(
+                  value: 'open',
+                  child: ListTile(
+                    leading: Icon(Icons.chat),
+                    title: Text('Otwórz'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'rename',
+                  child: ListTile(
+                    leading: Icon(Icons.edit),
+                    title: Text('Zmień nazwę'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         onTap: () => _openConversation(conversation),
+        onLongPress: () => _showConversationOptions(conversation),
       ),
     );
   }

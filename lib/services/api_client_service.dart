@@ -24,6 +24,15 @@ class ApiClient {
     return http.post(uri, headers: _headers(token), body: jsonEncode(body));
   }
 
+  static Future<http.Response> put(
+    String path, {
+    Object? body,
+    String? token,
+  }) {
+    final uri = Uri.parse('$baseUrl$path');
+    return http.put(uri, headers: _headers(token), body: jsonEncode(body));
+  }
+
   static Future<http.Response> delete(
     String path, {
     String? token,

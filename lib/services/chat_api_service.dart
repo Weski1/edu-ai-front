@@ -1,10 +1,11 @@
-// lib/services/chat_api_service.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import 'package:praca_inzynierska_front/models/message.dart';
+import 'package:praca_inzynierska_front/models/conversation.dart';
+import 'package:praca_inzynierska_front/models/rename_conversation_request.dart';
 import 'package:praca_inzynierska_front/services/api_client_service.dart';
 
 class ChatApiService {
@@ -231,6 +232,60 @@ class ChatApiService {
     } else {
       return [];
     }
+  }
+
+  /// Zmień nazwę konwersacji
+  static Future<Conversation> renameConversation({
+    required int conversationId,
+    required String newTitle,
+    String? token,
+  }) async {
+    print('=== DEBUG renameConversation ===');
+    print('Conversation ID: $conversationId');
+    print('New title: $newTitle');
+    print('Token: ${token != null ? token.substring(0, 20) + '...' : 'null'}');
+    print('Request URL: ${ApiClient.baseUrl}/conversations/$conversationId/rename');
+
+    final request = RenameConversationRequest(title: newTitle);
+    print('Request body: ${request.toJson()}');
+    
+    final res = await ApiClient.put(
+      '/conversations/$conversationId/rename',
+      body: request.toJson(),
+      token: token,
+    );
+
+    print('Response status: ${res.statusCode}');
+    final bodyTxt = utf8.decode(res.bodyBytes);
+    print('Response body: $bodyTxt');
+
+    if (res.statusCode != 200) {
+      // Spróbuj też z /chat prefix jeśli pierwszy nie zadziała
+      if (res.statusCode == 404) {
+        print('Trying with /chat prefix...');
+        final res2 = await ApiClient.put(
+          '/chat/conversations/$conversationId/rename',
+          body: request.toJson(),
+          token: token,
+        );
+        
+        print('Second attempt status: ${res2.statusCode}');
+        final bodyTxt2 = utf8.decode(res2.bodyBytes);
+        print('Second attempt body: $bodyTxt2');
+        
+        if (res2.statusCode == 200) {
+          final decoded = jsonDecode(bodyTxt2) as Map<String, dynamic>;
+          return Conversation.fromJson(decoded);
+        }
+        
+        throw Exception('Błąd zmiany nazwy konwersacji: ${res2.statusCode} $bodyTxt2');
+      }
+      
+      throw Exception('Błąd zmiany nazwy konwersacji: ${res.statusCode} $bodyTxt');
+    }
+
+    final decoded = jsonDecode(bodyTxt) as Map<String, dynamic>;
+    return Conversation.fromJson(decoded);
   }
 
   /// Pomocnicza funkcja do wydobycia rozszerzenia pliku
