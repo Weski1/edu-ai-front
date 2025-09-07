@@ -422,34 +422,46 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
                   border: OutlineInputBorder(),
                 ),
                 value: _selectedConversationId,
+                isExpanded: true,
+                menuMaxHeight: 400, // Ograniczenie wysokości menu
                 items: _conversations.map((conversation) {
                   final conversationObj = Conversation.fromJson(conversation);
                   return DropdownMenuItem<int>(
                     value: conversation['id'],
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          conversationObj.displayTitle,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        if (conversationObj.subject != null && conversationObj.subject!.isNotEmpty)
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 80), // Ograniczenie wysokości elementu
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min, // Minimalna wysokość
+                        children: [
                           Text(
-                            'Przedmiot: ${conversationObj.subject}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.blue,
-                              fontStyle: FontStyle.italic,
+                            conversationObj.displayTitle,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis, // Dodaj ellipsis dla długich tytułów
+                          ),
+                          if (conversationObj.subject != null && conversationObj.subject!.isNotEmpty)
+                            Text(
+                              'Przedmiot: ${conversationObj.subject}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          Text(
+                            'Utworzona: ${_formatDate(conversationObj.createdAt)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        Text(
-                          'Utworzona: ${_formatDate(conversationObj.createdAt)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),
