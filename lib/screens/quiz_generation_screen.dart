@@ -324,34 +324,46 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Wybór nauczyciela
-          _buildTeacherSelection(),
-          const SizedBox(height: 24),
-          
-          // Wybór konwersacji
-          if (_selectedTeacher != null) ...[
-            _buildConversationSelection(),
-            const SizedBox(height: 24),
-          ],
-          
-          // Ustawienia quizu
-          if (_selectedConversationId != null) ...[
-            _buildQuizSettings(),
-            const SizedBox(height: 24),
-            
-            // Konkretne tematy
-            _buildSpecificTopics(),
-            const SizedBox(height: 32),
-            
-            // Przycisk generowania
-            _buildGenerateButton(),
-          ],
-        ],
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 32, // Uwzględnij padding
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Wybór nauczyciela
+                  _buildTeacherSelection(),
+                  const SizedBox(height: 24),
+                  
+                  // Wybór konwersacji
+                  if (_selectedTeacher != null) ...[
+                    _buildConversationSelection(),
+                    const SizedBox(height: 24),
+                  ],
+                  
+                  // Ustawienia quizu
+                  if (_selectedConversationId != null) ...[
+                    _buildQuizSettings(),
+                    const SizedBox(height: 24),
+                    
+                    // Konkretne tematy
+                    _buildSpecificTopics(),
+                    const SizedBox(height: 32),
+                    
+                    // Przycisk generowania
+                    _buildGenerateButton(),
+                    const SizedBox(height: 16), // Dodatkowy padding na końcu
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -423,44 +435,21 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
                 ),
                 value: _selectedConversationId,
                 isExpanded: true,
-                menuMaxHeight: 400, // Ograniczenie wysokości menu
+                menuMaxHeight: 300, // Zmniejszona wysokość menu
                 items: _conversations.map((conversation) {
                   final conversationObj = Conversation.fromJson(conversation);
                   return DropdownMenuItem<int>(
                     value: conversation['id'],
-                    child: Container(
-                      constraints: const BoxConstraints(maxHeight: 80), // Ograniczenie wysokości elementu
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min, // Minimalna wysokość
-                        children: [
-                          Text(
-                            conversationObj.displayTitle,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis, // Dodaj ellipsis dla długich tytułów
-                          ),
-                          if (conversationObj.subject != null && conversationObj.subject!.isNotEmpty)
-                            Text(
-                              'Przedmiot: ${conversationObj.subject}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.blue,
-                                fontStyle: FontStyle.italic,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          Text(
-                            'Utworzona: ${_formatDate(conversationObj.createdAt)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    child: SizedBox(
+                      height: 40,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${conversationObj.displayTitle} (${_formatDate(conversationObj.createdAt)})',
+                          style: const TextStyle(fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   );

@@ -173,11 +173,18 @@ class QuizApiService {
     }
   }
 
-  static Future<void> deleteQuiz(int quizId) async {
+  static Future<Map<String, dynamic>> deleteQuiz(int quizId) async {
     final token = await AuthService.getSavedToken();
     final response = await ApiClient.delete('/quiz/$quizId', token: token);
     
-    if (response.statusCode != 200 && response.statusCode != 204) {
+    if (response.statusCode == 200) {
+      // Backend zwraca JSON z informacjami o usunięciu
+      final responseData = json.decode(utf8.decode(response.bodyBytes));
+      return responseData;
+    } else if (response.statusCode == 204) {
+      // No content - zwróć podstawową wiadomość
+      return {'message': 'Quiz usunięty pomyślnie'};
+    } else {
       throw Exception('Failed to delete quiz: ${utf8.decode(response.bodyBytes)}');
     }
   }

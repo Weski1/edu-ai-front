@@ -84,23 +84,64 @@ class _QuizListScreenState extends State<QuizListScreen> {
 
   Future<void> _deleteQuiz(int quizId) async {
     try {
-      await QuizApiService.deleteQuiz(quizId);
+      final result = await QuizApiService.deleteQuiz(quizId);
       _loadQuizzes(); // Reload list
+      
       if (mounted) {
+        String message = result['message'] ?? 'Quiz usunięty pomyślnie';
+        
+        // Dodaj informacje o usuniętych elementach jeśli są dostępne
+        if (result['attempts_deleted'] != null && result['attempts_deleted'] > 0) {
+          message += '\n• Usuniętych prób: ${result['attempts_deleted']}';
+        }
+        if (result['questions_deleted'] != null && result['questions_deleted'] > 0) {
+          message += '\n• Usuniętych pytań: ${result['questions_deleted']}';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quiz usunięty pomyślnie')),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        String errorMessage = 'Błąd podczas usuwania: $e';
-        if (e.toString().contains('Cannot delete quiz with existing attempts')) {
-          errorMessage = 'Nie można usunąć quizu, który ma już rozwiązane próby. Quiz z wynikami nie może być usunięty.';
+        String errorMessage;
+        Color backgroundColor = Colors.red;
+        
+        if (e.toString().contains('404') || e.toString().contains('not found')) {
+          errorMessage = 'Quiz nie został znaleziony. Możliwe że został już usunięty.';
+        } else if (e.toString().contains('403') || e.toString().contains('forbidden')) {
+          errorMessage = 'Brak uprawnień do usunięcia tego quizu.';
+        } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+          errorMessage = 'Błąd połączenia z serwerem. Sprawdź połączenie internetowe.';
+        } else if (e.toString().contains('500')) {
+          errorMessage = 'Błąd serwera podczas usuwania quizu. Spróbuj ponownie później.';
+        } else {
+          errorMessage = 'Błąd podczas usuwania quizu: ${e.toString()}';
         }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
+            backgroundColor: backgroundColor,
             duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
           ),
         );
       }
@@ -285,18 +326,37 @@ class _QuizListScreenState extends State<QuizListScreen> {
                     onSelected: (value) async {
                       if (value == 'delete') {
                         _showDeleteConfirmation(quiz);
+                      } else if (value == 'info') {
+                        _showQuizInfo(quiz);
                       }
                     },
                     itemBuilder: (context) => [
-                      if (quiz.attemptsCount == 0) // Tylko jeśli brak prób
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: ListTile(
-                            leading: Icon(Icons.delete, color: Colors.red),
-                            title: Text('Usuń quiz'),
-                            contentPadding: EdgeInsets.zero,
+                      // Zawsze pokazuj opcję usuwania
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.delete, 
+                            color: quiz.attemptsCount == 0 ? Colors.red : Colors.orange,
                           ),
+                          title: Text(
+                            quiz.attemptsCount == 0 
+                              ? 'Usuń quiz' 
+                              : 'Usuń quiz (${quiz.attemptsCount} prób)',
+                          ),
+                          contentPadding: EdgeInsets.zero,
                         ),
+                      ),
+                      // Opcja informacji o quizie
+                      const PopupMenuItem(
+                        value: 'info',
+                        child: ListTile(
+                          leading: Icon(Icons.info_outline, color: Colors.blue),
+                          title: Text('Szczegóły quizu'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      // Dodatkowe opcje można dodać tutaj w przyszłości
                     ],
                   ),
                 ],
@@ -562,14 +622,41 @@ class _QuizListScreenState extends State<QuizListScreen> {
   }
 
   void _showDeleteConfirmation(QuizListItem quiz) {
+    String title;
+    String content;
+    String deleteButtonText;
+    Color deleteButtonColor;
+    
+    if (quiz.attemptsCount == 0) {
+      title = 'Usuń quiz';
+      content = 'Czy na pewno chcesz usunąć quiz "${quiz.title}"?\n'
+                'Ta operacja jest nieodwracalna.';
+      deleteButtonText = 'Usuń';
+      deleteButtonColor = Colors.red;
+    } else {
+      title = 'Usuń quiz z próbami';
+      content = 'Quiz "${quiz.title}" ma ${quiz.attemptsCount} ${quiz.attemptsCount == 1 ? "próbę" : "prób"}.\n\n'
+                'Usunięcie quizu spowoduje również usunięcie:\n'
+                '• Wszystkich ${quiz.attemptsCount} prób\n'
+                '• Wszystkich odpowiedzi i wyników\n'
+                '• Całej historii rozwiązywania\n\n'
+                'Ta operacja jest NIEODWRACALNA!\n\n'
+                'Czy na pewno chcesz kontynuować?';
+      deleteButtonText = 'Usuń wszystko';
+      deleteButtonColor = Colors.red;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Usuń quiz'),
-        content: Text(
-          'Czy na pewno chcesz usunąć quiz "${quiz.title}"?\n'
-          'Ta operacja jest nieodwracalna.',
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: deleteButtonColor, size: 24),
+            const SizedBox(width: 8),
+            Text(title),
+          ],
         ),
+        content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -580,9 +667,62 @@ class _QuizListScreenState extends State<QuizListScreen> {
               Navigator.pop(context);
               _deleteQuiz(quiz.id);
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Usuń'),
+            style: TextButton.styleFrom(foregroundColor: deleteButtonColor),
+            child: Text(deleteButtonText),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showQuizInfo(QuizListItem quiz) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Informacje o quizie'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quiz: "${quiz.title}"',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text('Liczba prób: ${quiz.attemptsCount}'),
+            const SizedBox(height: 8),
+            if (quiz.attemptsCount > 0) ...[
+              const Icon(Icons.warning, color: Colors.orange, size: 20),
+              const SizedBox(height: 4),
+              const Text(
+                'Ten quiz nie może być usunięty, ponieważ ma już rozwiązane próby. '
+                'Quizy z wynikami są chronione przed usunięciem, aby zachować historię wyników.',
+                style: TextStyle(color: Colors.orange),
+              ),
+            ] else ...[
+              const Icon(Icons.check_circle, color: Colors.green, size: 20),
+              const SizedBox(height: 4),
+              const Text(
+                'Ten quiz może być usunięty, ponieważ nie ma jeszcze żadnych prób.',
+                style: TextStyle(color: Colors.green),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+          if (quiz.attemptsCount == 0)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showDeleteConfirmation(quiz);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Usuń quiz'),
+            ),
         ],
       ),
     );
