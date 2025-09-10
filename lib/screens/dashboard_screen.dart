@@ -159,17 +159,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildSubjectsStats(_stats!),
             const SizedBox(height: 24),
 
-            // Słabe tematy
-            if (_stats!.weakTopics.isNotEmpty) ...[
-              _buildTopicsSection('Tematy do poprawy', _stats!.weakTopics, Colors.red),
-              const SizedBox(height: 24),
-            ],
-
-            // Mocne tematy
-            if (_stats!.strongTopics.isNotEmpty) ...[
-              _buildTopicsSection('Twoje mocne strony', _stats!.strongTopics, Colors.green),
-              const SizedBox(height: 24),
-            ],
+            // Przefiltrowane tematy według kryterium 50%
+            ..._buildFilteredTopicsSections(_stats!),
 
             // Ostatnie próby
             if (_stats!.recentAttempts.isNotEmpty) ...[
@@ -302,6 +293,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildFilteredTopicsSections(DashboardStats stats) {
+    // Połącz wszystkie tematy z obu list
+    final allTopics = [...stats.weakTopics, ...stats.strongTopics];
+    
+    // Przefiltruj według kryterium 50%
+    final weakTopicsFiltered = allTopics.where((topic) => topic.accuracyPercentage < 50.0).toList();
+    final strongTopicsFiltered = allTopics.where((topic) => topic.accuracyPercentage >= 50.0).toList();
+    
+    List<Widget> sections = [];
+    
+    // Sekcja "Tematy do poprawy" dla wszystkich poniżej 50%
+    if (weakTopicsFiltered.isNotEmpty) {
+      sections.add(_buildTopicsSection('Tematy do poprawy', weakTopicsFiltered, Colors.red));
+      sections.add(const SizedBox(height: 24));
+    }
+    
+    // Sekcja "Twoje mocne strony" dla 50% i więcej
+    if (strongTopicsFiltered.isNotEmpty) {
+      sections.add(_buildTopicsSection('Twoje mocne strony', strongTopicsFiltered, Colors.green));
+      sections.add(const SizedBox(height: 24));
+    }
+    
+    return sections;
   }
 
   Widget _buildTopicsSection(String title, List<TopicPerformance> topics, Color color) {
