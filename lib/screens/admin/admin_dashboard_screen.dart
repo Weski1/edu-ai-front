@@ -287,7 +287,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Expanded(
                   child: _buildQuickActionButton(
-                    'Zarządzaj użytkownikami',
+                    'Użytkownicy',
                     Icons.people,
                     Colors.blue,
                     () => _navigateToScreen(1),
@@ -296,7 +296,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildQuickActionButton(
-                    'Zarządzaj nauczycielami',
+                    'Nauczyciele',
                     Icons.school,
                     Colors.green,
                     () => _navigateToScreen(2),
@@ -320,7 +320,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
@@ -333,6 +333,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Expanded(
               child: Text(
                 label,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w500,
