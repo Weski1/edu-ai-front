@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import '../models/quiz.dart';
 import '../services/quiz_api_service.dart';
+import '../services/api_client_service.dart';
 import '../widgets/latex_text.dart';
 import 'quiz_result_screen.dart';
 
@@ -19,7 +20,7 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
   QuizAttempt? _currentAttempt;
   int _currentQuestionIndex = 0;
   Map<int, String> _userAnswers = {};
-  Map<int, String> _imageUrls = {}; // Dodane dla obrazów
+  Map<int, List<String>> _imageUrls = {}; // Zmienione na listę obrazów
   Map<int, TextEditingController> _textControllers = {}; // Dodane dla kontrollerów
   Timer? _timer;
   int _timeSpentSeconds = 0;
@@ -172,7 +173,10 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
     try {
       final answers = widget.quiz.questions.map((question) {
         final userAnswer = _userAnswers[question.id] ?? '';
-        final imageUrl = _imageUrls[question.id];
+        final imageUrls = _imageUrls[question.id];
+        final imageUrl = (imageUrls?.isNotEmpty == true) 
+            ? imageUrls!.join(',') // Łączymy wszystkie URLs przecinkami
+            : null;
         
         // Debug info dla każdej odpowiedzi
         print('DEBUG Submit - Question ${question.id}: "${userAnswer}" (empty: ${userAnswer.isEmpty})');
@@ -218,26 +222,44 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
     }
   }
 
+  // Funkcja do budowania pełnego URL obrazu
+  String _buildFullImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return '';
+    
+    // Jeśli już jest pełny URL, zwróć go
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    
+    // W przeciwnym razie dodaj base URL
+    return '${ApiClient.baseUrl}$imageUrl';
+  }
+
   Future<void> _pickImage(int questionId) async {
     try {
-      // Show option to choose camera or gallery
-      final ImageSource? source = await showDialog<ImageSource>(
+      // Show option to choose single or multiple images
+      final String? choice = await showDialog<String>(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: const Text('Wybierz źródło'),
+            title: const Text('Dodaj zdjęcia'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
                   leading: const Icon(Icons.camera_alt),
                   title: const Text('Zrób zdjęcie'),
-                  onTap: () => Navigator.of(context).pop(ImageSource.camera),
+                  onTap: () => Navigator.of(context).pop('single_camera'),
                 ),
                 ListTile(
                   leading: const Icon(Icons.photo_library),
-                  title: const Text('Wybierz z galerii'),
-                  onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+                  title: const Text('Wybierz jedno zdjęcie'),
+                  onTap: () => Navigator.of(context).pop('single_gallery'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Wybierz wiele zdjęć'),
+                  onTap: () => Navigator.of(context).pop('multiple_gallery'),
                 ),
               ],
             ),
@@ -245,8 +267,31 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
         },
       );
 
-      if (source == null) return;
+      if (choice == null) return;
 
+      if (choice == 'multiple_gallery') {
+        await _pickMultipleImages(questionId);
+      } else {
+        await _pickSingleImage(questionId, choice);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Błąd podczas wyboru zdjęcia: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickSingleImage(int questionId, String choice) async {
+    try {
+      final ImageSource source = choice == 'single_camera' ? ImageSource.camera : ImageSource.gallery;
+      
       final XFile? image = await _imagePicker.pickImage(
         source: source,
         maxWidth: 1920,
@@ -279,7 +324,10 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
         final imageUrl = await QuizApiService.uploadQuizImage(image.path);
         
         setState(() {
-          _imageUrls[questionId] = imageUrl;
+          if (_imageUrls[questionId] == null) {
+            _imageUrls[questionId] = [];
+          }
+          _imageUrls[questionId]!.add(imageUrl);
         });
 
         if (mounted) {
@@ -299,6 +347,90 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Błąd przesyłania zdjęcia: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickMultipleImages(int questionId) async {
+    try {
+      final List<XFile> images = await _imagePicker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (images.isNotEmpty) {
+        // Limit to 5 images total per question
+        final currentImagesCount = _imageUrls[questionId]?.length ?? 0;
+        final availableSlots = 5 - currentImagesCount;
+        
+        if (availableSlots <= 0) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Maksymalnie 5 zdjęć na pytanie'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+          return;
+        }
+
+        final imagesToUpload = images.take(availableSlots).toList();
+        
+        // Show loading indicator
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Przesyłanie ${imagesToUpload.length} zdjęć...'),
+                ],
+              ),
+              duration: const Duration(seconds: 10),
+            ),
+          );
+        }
+
+        // Upload multiple images using the backend endpoint
+        final imagePaths = imagesToUpload.map((img) => img.path).toList();
+        final imageUrls = await QuizApiService.uploadMultipleQuizImages(imagePaths);
+        
+        setState(() {
+          if (_imageUrls[questionId] == null) {
+            _imageUrls[questionId] = [];
+          }
+          _imageUrls[questionId]!.addAll(imageUrls);
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${imageUrls.length} zdjęć zostało przesłanych pomyślnie!'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Błąd podczas przesyłania zdjęć: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -416,8 +548,12 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(top: BorderSide(color: Colors.grey[300]!)),
+              color: Theme.of(context).colorScheme.surface,
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                ),
+              ),
             ),
             child: Row(
               children: [
@@ -427,15 +563,27 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
                       onPressed: _previousQuestion,
                       icon: const Icon(Icons.arrow_back),
                       label: const Text('Poprzednie'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ),
-                const SizedBox(width: 16),
+                if (_currentQuestionIndex > 0) const SizedBox(width: 16),
                 Expanded(
                   child: _currentQuestionIndex < widget.quiz.questions.length - 1
                       ? ElevatedButton.icon(
                           onPressed: _nextQuestion,
                           icon: const Icon(Icons.arrow_forward),
                           label: const Text('Następne'),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(0, 44),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         )
                       : ElevatedButton.icon(
                           onPressed: _isSubmitting ? null : _showSubmitConfirmation,
@@ -447,6 +595,14 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
                                 ) 
                               : const Icon(Icons.check),
                           label: Text(_isSubmitting ? 'Wysyłanie...' : 'Zakończ quiz'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.tertiary,
+                            foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                            minimumSize: const Size(0, 44),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                 ),
               ],
@@ -506,31 +662,6 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
 
             // Answer input based on question type
             _buildAnswerInput(question),
-
-            // AI grading notice
-            if (question.requiresAiGrading) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber[50],
-                  border: Border.all(color: Colors.amber[300]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.smart_toy, color: Colors.amber, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'To pytanie będzie oceniane przez AI. Odpowiedz jak najdokładniej.',
-                        style: TextStyle(fontSize: 12, color: Colors.amber),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -661,17 +792,21 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
             ElevatedButton.icon(
               onPressed: () => _pickImage(question.id),
               icon: const Icon(Icons.camera_alt),
-              label: const Text('Dodaj zdjęcie'),
+              label: Text('Dodaj zdjęcie${(_imageUrls[question.id]?.length ?? 0) < 5 ? ' (${(_imageUrls[question.id]?.length ?? 0)}/5)' : ' (max)'}'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade100,
-                foregroundColor: Colors.blue.shade800,
+                backgroundColor: (_imageUrls[question.id]?.length ?? 0) >= 5 
+                    ? Colors.grey.shade200 
+                    : Colors.blue.shade100,
+                foregroundColor: (_imageUrls[question.id]?.length ?? 0) >= 5 
+                    ? Colors.grey.shade600 
+                    : Colors.blue.shade800,
               ),
             ),
             const SizedBox(width: 12),
-            if (_imageUrls[question.id] != null)
+            if (_imageUrls[question.id] != null && _imageUrls[question.id]!.isNotEmpty)
               Expanded(
                 child: Text(
-                  'Zdjęcie załączone ✓',
+                  '${_imageUrls[question.id]!.length} ${_imageUrls[question.id]!.length == 1 ? 'zdjęcie' : 'zdjęć'} załączone ✓',
                   style: TextStyle(
                     color: Colors.green.shade700,
                     fontWeight: FontWeight.w500,
@@ -681,37 +816,98 @@ class _QuizAttemptScreenState extends State<QuizAttemptScreen> {
           ],
         ),
         
-        // Display uploaded image if exists
-        if (_imageUrls[question.id] != null)
+        // Display uploaded images if exist
+        if (_imageUrls[question.id] != null && _imageUrls[question.id]!.isNotEmpty)
           Container(
             margin: const EdgeInsets.only(top: 12),
-            height: 200,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                _imageUrls[question.id]!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey.shade100,
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.grey),
-                          SizedBox(height: 8),
-                          Text('Błąd ładowania obrazu', 
-                               style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Załączone zdjęcia (${_imageUrls[question.id]!.length})',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _imageUrls[question.id]!.length,
+                    itemBuilder: (context, index) {
+                      final imageUrl = _imageUrls[question.id]![index];
+                      return Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        width: 120,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                _buildFullImageUrl(imageUrl),
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  print('Error loading image: $imageUrl, Full URL: ${_buildFullImageUrl(imageUrl)}');
+                                  print('Error details: $error');
+                                  return Container(
+                                    color: Colors.grey.shade100,
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.error_outline, color: Colors.grey, size: 20),
+                                          SizedBox(height: 4),
+                                          Text('Błąd', 
+                                               style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            // Delete button
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _imageUrls[question.id]!.removeAt(index);
+                                    if (_imageUrls[question.id]!.isEmpty) {
+                                      _imageUrls.remove(question.id);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade600,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
       ],

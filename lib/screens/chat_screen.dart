@@ -170,6 +170,15 @@ class _ChatScreenState extends State<ChatScreen> {
       ChatMessage ai;
 
       if (hasPendingImages) {
+        // Stwórz tymczasowe załączniki dla lokalnego podglądu
+        final tempAttachments = imagesToSend.map((file) => 
+          ChatAttachment(
+            id: -DateTime.now().millisecondsSinceEpoch,
+            url: file.path, // używamy lokalnej ścieżki tymczasowo
+            mimeType: 'image/jpeg',
+          )
+        ).toList();
+        
         // lokalny bąbel użytkownika z podglądem obrazów
         final localMedia = ChatMessage(
           id: -DateTime.now().millisecondsSinceEpoch,
@@ -178,13 +187,13 @@ class _ChatScreenState extends State<ChatScreen> {
           type: 'media',
           content: text,
           createdAt: DateTime.now(),
-          attachments: const [], // URL nieznany dopóki nie wyślemy
+          attachments: tempAttachments, // dodajemy tymczasowe załączniki
         );
         
         setState(() {
           _messages.add(localMedia);
           _controller.clear();
-          _pendingImages.clear(); // Wyczyść listę obrazów NATYCHMIAST po dodaniu wiadomości
+          _pendingImages.clear(); // Wyczyść listę obrazów po dodaniu wiadomości
         });
         _scrollToBottom();
 
@@ -294,61 +303,12 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMediaAttachments(ChatMessage m, {List<File>? localPendingFiles}) {
-    // Jeśli to lokalny bąbel (id<0) i mamy pendingFiles – pokażemy ich miniatury.
-    if (m.id < 0 && localPendingFiles != null && localPendingFiles.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Wyświetlanie lokalnych obrazów w siatce
-          if (localPendingFiles.length == 1)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: GestureDetector(
-                onTap: () => _showImageFull(
-                  '', // nieużywany przy localProvider
-                  localProvider: FileImage(localPendingFiles[0]),
-                ),
-                child: Image.file(localPendingFiles[0], width: 220, fit: BoxFit.cover),
-              ),
-            )
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: localPendingFiles.length > 4 ? 3 : 2,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-              ),
-              itemCount: localPendingFiles.length,
-              itemBuilder: (context, index) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: GestureDetector(
-                    onTap: () => _showImageFull(
-                      '',
-                      localProvider: FileImage(localPendingFiles[index]),
-                    ),
-                    child: Image.file(
-                      localPendingFiles[index],
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                );
-              },
-            ),
-          if (m.content.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(m.content),
-            ),
-        ],
-      );
-    }
+  Widget _buildMediaAttachments(ChatMessage m) {
+    // Obsługaj zarówno lokalne pliki (w tymczasowych załącznikach) jak i zwykłe załączniki
+    final hasLocalFiles = m.attachments.any((att) => !att.url.startsWith('http') && !att.url.startsWith('/uploads'));
+    final displayAttachments = m.attachments;
 
-    // W przeciwnym razie – renderuj załączniki z URL
-    if (m.attachments.isEmpty) {
+    if (displayAttachments.isEmpty) {
       // awaryjnie – nie ma załączników, ale type=media
       return const SizedBox(width: 220, height: 160);
     }
@@ -356,22 +316,33 @@ class _ChatScreenState extends State<ChatScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Wyświetlanie załączników z serwera
-        if (m.attachments.length == 1)
+        // Wyświetlanie załączników 
+        if (displayAttachments.length == 1)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: GestureDetector(
               onTap: () {
-                final url = _fullUrl(m.attachments[0].url);
-                if (url != null) _showImageFull(url);
+                final att = displayAttachments[0];
+                if (hasLocalFiles) {
+                  _showImageFull('', localProvider: FileImage(File(att.url)));
+                } else {
+                  final url = _fullUrl(att.url);
+                  if (url != null) _showImageFull(url);
+                }
               },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  _fullUrl(m.attachments[0].url)!,
-                  width: 220,
-                  fit: BoxFit.cover,
-                ),
+                child: hasLocalFiles
+                    ? Image.file(
+                        File(displayAttachments[0].url),
+                        width: 220,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        _fullUrl(displayAttachments[0].url)!,
+                        width: 220,
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
           )
@@ -380,26 +351,35 @@ class _ChatScreenState extends State<ChatScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: m.attachments.length > 4 ? 3 : 2,
+              crossAxisCount: displayAttachments.length > 4 ? 3 : 2,
               crossAxisSpacing: 4,
               mainAxisSpacing: 4,
             ),
-            itemCount: m.attachments.length,
+            itemCount: displayAttachments.length,
             itemBuilder: (context, index) {
-              final att = m.attachments[index];
+              final att = displayAttachments[index];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: GestureDetector(
                   onTap: () {
-                    final url = _fullUrl(att.url);
-                    if (url != null) _showImageFull(url);
+                    if (hasLocalFiles) {
+                      _showImageFull('', localProvider: FileImage(File(att.url)));
+                    } else {
+                      final url = _fullUrl(att.url);
+                      if (url != null) _showImageFull(url);
+                    }
                   },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      _fullUrl(att.url)!,
-                      fit: BoxFit.cover,
-                    ),
+                    child: hasLocalFiles
+                        ? Image.file(
+                            File(att.url),
+                            fit: BoxFit.cover,
+                          )
+                        : Image.network(
+                            _fullUrl(att.url)!,
+                            fit: BoxFit.cover,
+                          ),
                   ),
                 ),
               );
@@ -428,11 +408,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final textColor = isUser && isDark ? Colors.white : null;
 
     final inner = m.isMedia
-        ? _buildMediaAttachments(
-            m,
-            localPendingFiles:
-                (m.id < 0 && _pendingImages.isNotEmpty) ? _pendingImages : null,
-          )
+        ? _buildMediaAttachments(m)
         : Text(
             m.content,
             style: TextStyle(color: textColor),

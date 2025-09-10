@@ -292,8 +292,8 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(_quiz!.title),
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
           actions: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -314,8 +314,8 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
             // Pasek postępu
             LinearProgressIndicator(
               value: progress,
-              backgroundColor: Colors.grey[300],
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.indigo),
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
             ),
             // Informacje o pytaniu
             Container(
@@ -347,50 +347,87 @@ class _QuizTakingScreenState extends State<QuizTakingScreen> {
             // Nawigacja
             Container(
               padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Przycisk "Poprzednie"
-                  ElevatedButton(
-                    onPressed: _currentQuestionIndex > 0
-                        ? () {
-                            setState(() {
-                              _currentQuestionIndex--;
-                            });
-                          }
-                        : null,
-                    child: const Text('Poprzednie'),
-                  ),
-                  // Przycisk "Następne" lub "Zakończ"
-                  ElevatedButton(
-                    onPressed: _isSubmitting ? null : () {
-                      if (_currentQuestionIndex < _quiz!.questions.length - 1) {
-                        setState(() {
-                          _currentQuestionIndex++;
-                        });
-                      } else {
-                        _showSubmitConfirmation();
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _currentQuestionIndex == _quiz!.questions.length - 1
-                          ? Colors.green
-                          : Colors.indigo,
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : Text(
-                            _currentQuestionIndex < _quiz!.questions.length - 1
-                                ? 'Następne'
-                                : 'Zakończ',
+                  if (_currentQuestionIndex > 0)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _currentQuestionIndex--;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.secondary,
+                          foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                          minimumSize: const Size(0, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                        ),
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text(
+                          'Poprzednie',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  
+                  if (_currentQuestionIndex > 0) const SizedBox(width: 16),
+                  
+                  // Przycisk "Następne" lub "Zakończ"
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isSubmitting ? null : () {
+                        if (_currentQuestionIndex < _quiz!.questions.length - 1) {
+                          setState(() {
+                            _currentQuestionIndex++;
+                          });
+                        } else {
+                          _showSubmitConfirmation();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _currentQuestionIndex == _quiz!.questions.length - 1
+                            ? Theme.of(context).colorScheme.tertiary
+                            : Theme.of(context).colorScheme.primary,
+                        foregroundColor: _currentQuestionIndex == _quiz!.questions.length - 1
+                            ? Theme.of(context).colorScheme.onTertiary
+                            : Theme.of(context).colorScheme.onPrimary,
+                        minimumSize: const Size(0, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Icon(_currentQuestionIndex < _quiz!.questions.length - 1
+                              ? Icons.arrow_forward
+                              : Icons.check),
+                      label: Text(
+                        _currentQuestionIndex < _quiz!.questions.length - 1
+                            ? 'Następne'
+                            : 'Zakończ',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
                 ],
               ),

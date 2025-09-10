@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/quiz.dart';
 import '../models/quiz_stats.dart';
 import '../models/quiz_attempts.dart';
@@ -238,54 +240,163 @@ class QuizApiService {
 
   // Obsługa upload obrazów dla pytań z grafiką
   static Future<String> uploadQuizImage(String imagePath) async {
+    print('=== QUIZ IMAGE UPLOAD DEBUG ===');
+    print('Image path: $imagePath');
+    
     final token = await AuthService.getSavedToken();
-    
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('${ApiClient.baseUrl}/quiz/upload-image'),
-    );
-    
-    if (token != null && token.isNotEmpty) {
-      request.headers['Authorization'] = 'Bearer $token';
+    if (token == null || token.isEmpty) {
+      throw Exception('Nie jesteś zalogowany');
     }
     
-    request.files.add(await http.MultipartFile.fromPath('file', imagePath));
+    print('Token exists: true');
     
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(responseBody);
-      return data['image_url'] as String;
-    } else {
-      throw Exception('Failed to upload image: $responseBody');
+    try {
+      // Sprawdź czy plik istnieje
+      final imageFile = File(imagePath);
+      if (!await imageFile.exists()) {
+        throw Exception('Plik nie istnieje');
+      }
+
+      // Sprawdź rozmiar pliku
+      final fileSize = await imageFile.length();
+      if (fileSize > 10 * 1024 * 1024) { // 10MB limit for quiz images
+        throw Exception('Plik jest za duży (max 10MB)');
+      }
+
+      // Określ MIME type na podstawie rozszerzenia
+      String? mimeType;
+      final extension = imagePath.toLowerCase();
+      if (extension.endsWith('.jpg') || extension.endsWith('.jpeg')) {
+        mimeType = 'image/jpeg';
+      } else if (extension.endsWith('.png')) {
+        mimeType = 'image/png';
+      } else if (extension.endsWith('.webp')) {
+        mimeType = 'image/webp';
+      } else {
+        throw Exception('Nieobsługiwany format pliku. Użyj JPG, PNG lub WebP.');
+      }
+      
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiClient.baseUrl}/quiz/upload-image'),
+      );
+      
+      request.headers['Authorization'] = 'Bearer $token';
+      
+      print('Upload URL: ${request.url}');
+      print('File size: $fileSize bytes');
+      print('MIME type: $mimeType');
+      
+      // Dodaj plik do żądania z poprawnym MIME type
+      final multipartFile = await http.MultipartFile.fromPath(
+        'file', 
+        imagePath,
+        contentType: MediaType.parse(mimeType),
+      );
+      request.files.add(multipartFile);
+      
+      print('File added to request with content-type: $mimeType');
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final imageUrl = data['image_url'] as String;
+        print('Upload successful, image URL: $imageUrl');
+        return imageUrl;
+      } else {
+        print('Upload failed with status ${response.statusCode}');
+        print('Error response: ${response.body}');
+        throw Exception('Failed to upload image: ${response.body}');
+      }
+      
+    } catch (e) {
+      print('Exception during upload: $e');
+      rethrow;
     }
   }
 
   static Future<List<String>> uploadMultipleQuizImages(List<String> imagePaths) async {
+    print('=== MULTIPLE QUIZ IMAGE UPLOAD DEBUG ===');
+    print('Number of images: ${imagePaths.length}');
+    print('Image paths: $imagePaths');
+    
     final token = await AuthService.getSavedToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Nie jesteś zalogowany');
+    }
+    
+    print('Token exists: true');
     
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('${ApiClient.baseUrl}/quiz/upload-multiple-images'),
     );
     
-    if (token != null && token.isNotEmpty) {
-      request.headers['Authorization'] = 'Bearer $token';
-    }
+    request.headers['Authorization'] = 'Bearer $token';
+    print('Upload URL: ${request.url}');
     
     for (final imagePath in imagePaths) {
-      request.files.add(await http.MultipartFile.fromPath('files', imagePath));
+      // Sprawdź czy plik istnieje
+      final imageFile = File(imagePath);
+      if (!await imageFile.exists()) {
+        print('WARNING: File does not exist: $imagePath');
+        continue;
+      }
+
+      // Sprawdź rozmiar pliku
+      final fileSize = await imageFile.length();
+      if (fileSize > 10 * 1024 * 1024) { // 10MB limit
+        print('WARNING: File too large: $imagePath ($fileSize bytes)');
+        continue;
+      }
+
+      // Określ MIME type
+      String? mimeType;
+      final extension = imagePath.toLowerCase();
+      if (extension.endsWith('.jpg') || extension.endsWith('.jpeg')) {
+        mimeType = 'image/jpeg';
+      } else if (extension.endsWith('.png')) {
+        mimeType = 'image/png';
+      } else if (extension.endsWith('.webp')) {
+        mimeType = 'image/webp';
+      } else {
+        print('WARNING: Unsupported file format: $imagePath');
+        continue;
+      }
+      
+      print('Adding file: $imagePath (size: $fileSize bytes, type: $mimeType)');
+      
+      // Dodaj plik z poprawnym MIME type
+      final multipartFile = await http.MultipartFile.fromPath(
+        'files', 
+        imagePath,
+        contentType: MediaType.parse(mimeType),
+      );
+      request.files.add(multipartFile);
     }
     
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
+    print('Total files added to request: ${request.files.length}');
+    
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
     
     if (response.statusCode == 200) {
-      final data = jsonDecode(responseBody);
-      return (data['image_urls'] as List).cast<String>();
+      final data = jsonDecode(response.body);
+      final imageUrls = (data['image_urls'] as List).cast<String>();
+      print('Upload successful, image URLs: $imageUrls');
+      return imageUrls;
     } else {
-      throw Exception('Failed to upload images: $responseBody');
+      print('Upload failed with status ${response.statusCode}');
+      print('Error response: ${response.body}');
+      throw Exception('Failed to upload images: ${response.body}');
     }
   }
 
