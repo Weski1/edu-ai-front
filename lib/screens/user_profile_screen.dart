@@ -434,58 +434,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
-                    Icons.notifications,
-                    color: Colors.green,
-                  ),
-                ),
-                title: const Text('Powiadomienia'),
-                subtitle: const Text('Zarządzaj powiadomieniami'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to notifications settings
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Funkcja w przygotowaniu')),
-                  );
-                },
-              ),
-              
-              const Divider(height: 1),
-              
-              ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.language,
-                    color: Colors.blue,
-                  ),
-                ),
-                title: const Text('Język'),
-                subtitle: const Text('Polski'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to language settings
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Funkcja w przygotowaniu')),
-                  );
-                },
-              ),
-              
-              const Divider(height: 1),
-              
-              ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
                     Icons.refresh,
                     color: Colors.green,
                   ),
@@ -563,32 +511,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       });
                     }
                   }
-                },
-              ),
-              
-              const Divider(height: 1),
-              
-              ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.help,
-                    color: Colors.purple,
-                  ),
-                ),
-                title: const Text('Pomoc'),
-                subtitle: const Text('FAQ i wsparcie techniczne'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to help
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Funkcja w przygotowaniu')),
-                  );
                 },
               ),
               
