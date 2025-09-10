@@ -28,11 +28,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     setState(() => _loading = true);
     final success = await AuthService.loginAndSave(email, password);
-    setState(() => _loading = false);
-
+    
     if (success) {
       final token = await AuthService.getSavedToken();
+      
       if (!mounted) return;
+      
+      // Wszyscy użytkownicy (włącznie z administratorami) idą do głównej aplikacji
+      // Administratorzy będą mieli dodatkową zakładkę "Admin" w menu nawigacji
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => MainScreen(token: token!)),
@@ -43,6 +46,8 @@ class _LoginScreenState extends State<LoginScreen> {
         const SnackBar(content: Text('Logowanie nieudane. Sprawdź dane.')),
       );
     }
+
+    setState(() => _loading = false);
   }
 
   void _onForgotPassword() {

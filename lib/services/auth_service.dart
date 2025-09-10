@@ -145,4 +145,30 @@ class AuthService {
       return 'Nie udało się wysłać wiadomości.';
     }
   }
+
+  /// Pobierz dane użytkownika
+  static Future<Map<String, dynamic>?> getUserData() async {
+    final token = await getSavedToken();
+    if (token == null || token.isEmpty) return null;
+    
+    try {
+      final uri = Uri.parse('${ApiClient.baseUrl}/auth/me');
+      final res = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        return data;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting user data: $e');
+      return null;
+    }
+  }
 }
