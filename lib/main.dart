@@ -4,7 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
-import 'package:praca_inzynierska_front/screens/login_screen.dart';
+import 'package:praca_inzynierska_front/screens/welcome_screen.dart';
 import 'config/theme_config.dart';
 import 'providers/theme_provider.dart';
 
@@ -30,24 +30,21 @@ class MainApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Praca Inżynierska',
-            
+
             // Konfiguracja motywów
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.flutterThemeMode,
-            
+
             // Lokalizacja
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: const [
-              Locale('pl', 'PL'),
-              Locale('en', 'US'),
-            ],
-            
-            home: const LoginScreen(),
+            supportedLocales: const [Locale('pl', 'PL'), Locale('en', 'US')],
+
+            home: const WelcomeScreen(),
           );
         },
       ),
