@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
-import '../config/theme_config.dart'; // Dodajemy import dla AppThemeMode
+import '../config/theme_config.dart';
 import '../services/auth_service.dart';
 import '../services/user_profile_api_service.dart';
 import '../models/user_profile.dart';
@@ -29,7 +29,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final profile = await UserProfileApiService.getUserProfile();
       setState(() {
@@ -38,6 +38,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -48,30 +49,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Future<void> _logout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Wylogowanie'),
-        content: const Text('Czy na pewno chcesz się wylogować?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Anuluj'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Wylogowanie'),
+            content: const Text('Czy na pewno chcesz się wylogować?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Anuluj'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Wyloguj'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Wyloguj'),
-          ),
-        ],
-      ),
     );
 
     if (shouldLogout == true) {
       try {
-        // Wyloguj na backendzie
         await UserProfileApiService.logoutUser();
-        
-        // Wyloguj lokalnie
         await AuthService.logout();
-        
+
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -79,9 +78,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           );
         }
       } catch (e) {
-        // Nawet jeśli wystąpi błąd z backendem, wylogowujemy lokalnie
         await AuthService.logout();
-        
+
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -98,9 +96,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final colorScheme = theme.colorScheme;
 
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_userProfile == null) {
@@ -124,7 +120,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
               Text(
                 'Nie udało się załadować profilu',
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -132,7 +127,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -143,7 +137,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   textAlign: TextAlign.center,
                 ),
               ],
-              
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _loadUserProfile,
@@ -163,21 +156,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Profile header
             _buildProfileHeader(theme),
             const SizedBox(height: 32),
-            
-            // Stats cards
-            _buildStatsSection(theme),
-            const SizedBox(height: 32),
-            
-            // Settings section
             _buildSettingsSection(theme),
             const SizedBox(height: 32),
-            
-            // Account actions
             _buildAccountActionsSection(theme),
-            
             const SizedBox(height: 32),
           ],
         ),
@@ -187,65 +170,55 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Widget _buildProfileHeader(ThemeData theme) {
     final profile = _userProfile!;
-    final colorScheme = theme.colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary,
-            colorScheme.secondary,
-          ],
-        ),
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: theme.shadowColor.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // Avatar z możliwością edycji
           ProfileImagePicker(
             key: ValueKey(profile.profileImageUrl ?? 'no-image'),
             currentImageUrl: profile.profileImageUrl,
             onImageUpdated: (newImageUrl) async {
-              // Odśwież dane profilu z serwera po zmianie zdjęcia
               await _loadUserProfile();
             },
           ),
           const SizedBox(height: 16),
-          
-          // Name
           Text(
             profile.fullName,
             style: theme.textTheme.headlineMedium?.copyWith(
-              color: Colors.white,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
-          
-          // Email
           Text(
             profile.email,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withOpacity(0.9),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          
-          // Role
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               _getRoleDisplayName(profile.role),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -267,124 +240,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
-  Widget _buildStatsSection(ThemeData theme) {
-    final profile = _userProfile!;
-    final stats = profile.stats;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Twoje statystyki',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                'Ukończone quizy',
-                '${stats.totalCompletedQuizzes}',
-                Icons.quiz_outlined,
-                theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                'Średni wynik',
-                stats.overallAvgScore != null 
-                  ? '${stats.overallAvgScore!.toStringAsFixed(1)}%'
-                  : 'Brak danych',
-                Icons.trending_up,
-                stats.overallAvgScore != null 
-                  ? _getScoreColor(stats.overallAvgScore!)
-                  : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                'Łączne próby',
-                '${stats.totalQuizAttempts}',
-                Icons.psychology,
-                Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                theme,
-                stats.favoriteTeacher != null ? 'Ulubiony nauczyciel' : 'Ulubiony przedmiot',
-                stats.favoriteTeacher ?? stats.favoriteSubject ?? 'Brak danych',
-                stats.favoriteTeacher != null ? Icons.person : Icons.book,
-                Colors.pink,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-    ThemeData theme,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSettingsSection(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +251,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        
         Card(
           child: Column(
             children: [
@@ -422,9 +276,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   );
                 },
               ),
-              
               const Divider(height: 1),
-              
               ListTile(
                 leading: Container(
                   width: 40,
@@ -433,31 +285,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.refresh,
-                    color: Colors.green,
-                  ),
+                  child: const Icon(Icons.refresh, color: Colors.green),
                 ),
                 title: const Text('Odśwież profil'),
                 subtitle: const Text('Pobierz najnowsze dane'),
-                trailing: _isLoading 
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.chevron_right),
-                onTap: _isLoading ? null : () async {
-                  await _loadUserProfile();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Profil został odświeżony'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                },
+                trailing:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.chevron_right),
+                onTap:
+                    _isLoading
+                        ? null
+                        : () async {
+                          await _loadUserProfile();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Profil został odświeżony'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
               ),
             ],
           ),
@@ -477,7 +330,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        
         Card(
           child: Column(
             children: [
@@ -489,22 +341,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     color: Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.edit,
-                    color: Colors.orange,
-                  ),
+                  child: const Icon(Icons.edit, color: Colors.orange),
                 ),
                 title: const Text('Edytuj profil'),
                 subtitle: const Text('Zmień swoje dane osobowe'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   if (_userProfile != null) {
-                    final updatedProfile = await Navigator.of(context).push<UserProfile>(
+                    final updatedProfile = await Navigator.of(
+                      context,
+                    ).push<UserProfile>(
                       MaterialPageRoute(
-                        builder: (_) => EditProfileScreen(userProfile: _userProfile!),
+                        builder:
+                            (_) =>
+                                EditProfileScreen(userProfile: _userProfile!),
                       ),
                     );
-                    // Jeśli profil został zaktualizowany, odśwież dane
                     if (updatedProfile != null) {
                       setState(() {
                         _userProfile = updatedProfile;
@@ -513,9 +365,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   }
                 },
               ),
-              
               const Divider(height: 1),
-              
               ListTile(
                 leading: Container(
                   width: 40,
@@ -524,10 +374,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     color: theme.colorScheme.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    Icons.logout,
-                    color: theme.colorScheme.error,
-                  ),
+                  child: Icon(Icons.logout, color: theme.colorScheme.error),
                 ),
                 title: Text(
                   'Wyloguj się',
@@ -549,61 +396,70 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Wybierz motyw',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            ...AppThemeMode.values.map((mode) {
-              final isSelected = themeProvider.themeMode == mode;
-              return ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isSelected 
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                      : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    border: isSelected 
-                      ? Border.all(color: Theme.of(context).colorScheme.primary)
-                      : null,
-                  ),
-                  child: Icon(
-                    _getThemeModeIcon(mode),
-                    color: isSelected 
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+      builder:
+          (context) => Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Wybierz motyw',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                title: Text(_getThemeModeDisplayName(mode)),
-                subtitle: Text(_getThemeModeDescription(mode)),
-                trailing: isSelected 
-                  ? Icon(
-                      Icons.check,
-                      color: Theme.of(context).colorScheme.primary,
-                    )
-                  : null,
-                onTap: () {
-                  themeProvider.setThemeMode(mode);
-                  Navigator.of(context).pop();
-                },
-              );
-            }).toList(),
-            
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+                const SizedBox(height: 24),
+                ...AppThemeMode.values.map((mode) {
+                  final isSelected = themeProvider.themeMode == mode;
+                  return ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? Theme.of(
+                                  context,
+                                ).colorScheme.primary.withOpacity(0.1)
+                                : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border:
+                            isSelected
+                                ? Border.all(
+                                  color: Theme.of(context).colorScheme.primary,
+                                )
+                                : null,
+                      ),
+                      child: Icon(
+                        _getThemeModeIcon(mode),
+                        color:
+                            isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    title: Text(_getThemeModeDisplayName(mode)),
+                    subtitle: Text(_getThemeModeDescription(mode)),
+                    trailing:
+                        isSelected
+                            ? Icon(
+                              Icons.check,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                            : null,
+                    onTap: () {
+                      themeProvider.setThemeMode(mode);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                }).toList(),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
     );
   }
 
@@ -638,11 +494,5 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       case AppThemeMode.dark:
         return 'Ciemny motyw zawsze aktywny';
     }
-  }
-
-  Color _getScoreColor(double score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
   }
 }

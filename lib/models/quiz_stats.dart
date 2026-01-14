@@ -26,19 +26,25 @@ class DashboardStats {
       totalQuizzesCompleted: json['total_quizzes_completed'] as int,
       totalTimeSpentMinutes: json['total_time_spent_minutes'] as int,
       overallAverageScore: (json['overall_average_score'] as num).toDouble(),
-      subjectsStats: (json['subjects_stats'] as List<dynamic>)
-          .map((s) => SubjectStats.fromJson(s as Map<String, dynamic>))
-          .toList(),
-      recentAttempts: (json['recent_attempts'] as List<dynamic>)
-          .map((a) => QuizAttemptResult.fromJson(a as Map<String, dynamic>))
-          .toList(),
-      weakTopics: (json['weak_topics'] as List<dynamic>)
-          .map((t) => TopicPerformance.fromJson(t as Map<String, dynamic>))
-          .toList(),
-      strongTopics: (json['strong_topics'] as List<dynamic>)
-          .map((t) => TopicPerformance.fromJson(t as Map<String, dynamic>))
-          .toList(),
-      monthlyProgress: Map<String, double>.from(json['monthly_progress'] as Map),
+      subjectsStats:
+          (json['subjects_stats'] as List<dynamic>)
+              .map((s) => SubjectStats.fromJson(s as Map<String, dynamic>))
+              .toList(),
+      recentAttempts:
+          (json['recent_attempts'] as List<dynamic>)
+              .map((a) => QuizAttemptResult.fromJson(a as Map<String, dynamic>))
+              .toList(),
+      weakTopics:
+          (json['weak_topics'] as List<dynamic>)
+              .map((t) => TopicPerformance.fromJson(t as Map<String, dynamic>))
+              .toList(),
+      strongTopics:
+          (json['strong_topics'] as List<dynamic>)
+              .map((t) => TopicPerformance.fromJson(t as Map<String, dynamic>))
+              .toList(),
+      monthlyProgress: Map<String, double>.from(
+        json['monthly_progress'] as Map,
+      ),
     );
   }
 }
@@ -87,9 +93,9 @@ class SubjectStats {
   }
 
   String get improvementTrendText {
-    if (improvementTrend > 5) return 'Rosnący trend 📈';
-    if (improvementTrend < -5) return 'Spadkowy trend 📉';
-    return 'Stabilny 📊';
+    if (improvementTrend > 5) return 'Rosnący trend';
+    if (improvementTrend < -5) return 'Spadkowy trend';
+    return 'Stabilny';
   }
 }
 
@@ -126,9 +132,9 @@ class TopicPerformance {
   }
 
   String get performanceEmoji {
-    if (accuracyPercentage >= 80) return '🎯';
-    if (accuracyPercentage >= 60) return '👍';
-    if (accuracyPercentage >= 40) return '📚';
-    return '🔄';
+    if (accuracyPercentage >= 80) return '';
+    if (accuracyPercentage >= 60) return '';
+    if (accuracyPercentage >= 40) return '';
+    return '';
   }
 }

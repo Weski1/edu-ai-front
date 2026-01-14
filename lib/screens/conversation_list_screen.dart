@@ -9,11 +9,7 @@ class ConversationListScreen extends StatefulWidget {
   final Teacher teacher;
   final String? token;
 
-  const ConversationListScreen({
-    super.key,
-    required this.teacher,
-    this.token,
-  });
+  const ConversationListScreen({super.key, required this.teacher, this.token});
 
   @override
   State<ConversationListScreen> createState() => _ConversationListScreenState();
@@ -32,7 +28,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
   Future<void> _loadConversations() async {
     if (_loading) return;
-    
+
     setState(() {
       _loading = true;
       _hasError = false;
@@ -46,10 +42,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       );
 
       print('Received ${conversationsData.length} conversations');
-      
-      final conversations = conversationsData
-          .map((data) => Conversation.fromJson(data))
-          .toList();
+
+      final conversations =
+          conversationsData.map((data) => Conversation.fromJson(data)).toList();
 
       // Sortuj konwersacje - najnowsze pierwsza
       conversations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -77,20 +72,20 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         teacherId: widget.teacher.id,
         token: widget.token,
       );
-      
+
       if (!mounted) return;
-      
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatScreen(
-            conversationId: conversationId,
-            teacherName: widget.teacher.name,
-            token: widget.token,
-          ),
+          builder:
+              (_) => ChatScreen(
+                conversationId: conversationId,
+                teacherName: widget.teacher.name,
+                token: widget.token,
+              ),
         ),
       ).then((_) => _loadConversations()); // Odśwież listę po powrocie
-      
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,11 +98,12 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          conversationId: conversation.id,
-          teacherName: widget.teacher.name,
-          token: widget.token,
-        ),
+        builder:
+            (_) => ChatScreen(
+              conversationId: conversation.id,
+              teacherName: widget.teacher.name,
+              token: widget.token,
+            ),
       ),
     ).then((_) => _loadConversations()); // Odśwież listę po powrocie
   }
@@ -116,7 +112,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
     final TextEditingController controller = TextEditingController(
       text: conversation.title ?? conversation.topic ?? '',
     );
-    
+
     final result = await showDialog<String>(
       context: context,
       builder: (BuildContext context) {
@@ -163,10 +159,10 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         newTitle: newTitle,
         token: widget.token,
       );
-      
+
       // Odśwież listę konwersacji
       await _loadConversations();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -287,10 +283,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
           children: [
             Text(
               _formatDate(conversation.createdAt),
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
             const SizedBox(width: 8),
             PopupMenuButton<String>(
@@ -302,24 +295,25 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   _openConversation(conversation);
                 }
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem<String>(
-                  value: 'open',
-                  child: ListTile(
-                    leading: Icon(Icons.chat),
-                    title: Text('Otwórz'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'rename',
-                  child: ListTile(
-                    leading: Icon(Icons.edit),
-                    title: Text('Zmień nazwę'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
+              itemBuilder:
+                  (context) => [
+                    const PopupMenuItem<String>(
+                      value: 'open',
+                      child: ListTile(
+                        leading: Icon(Icons.chat),
+                        title: Text('Otwórz'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'rename',
+                      child: ListTile(
+                        leading: Icon(Icons.edit),
+                        title: Text('Zmień nazwę'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
             ),
           ],
         ),
@@ -357,75 +351,68 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadConversations,
-        child: _loading && _conversations.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : _hasError && _conversations.isEmpty
+        child:
+            _loading && _conversations.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : _hasError && _conversations.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Błąd wczytywania konwersacji',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadConversations,
-                          child: const Text('Spróbuj ponownie'),
-                        ),
-                      ],
-                    ),
-                  )
-                : _conversations.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.chat_bubble_outline,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Brak konwersacji z ${widget.teacher.name}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Rozpocznij nową rozmowę!',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _conversations.length,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemBuilder: (context, index) {
-                          return _buildConversationTile(_conversations[index]);
-                        },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.grey[400],
                       ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Błąd wczytywania konwersacji',
+                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadConversations,
+                        child: const Text('Spróbuj ponownie'),
+                      ),
+                    ],
+                  ),
+                )
+                : _conversations.isEmpty
+                ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Brak konwersacji z ${widget.teacher.name}',
+                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Rozpocznij nową rozmowę!',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                )
+                : ListView.builder(
+                  itemCount: _conversations.length,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemBuilder: (context, index) {
+                    return _buildConversationTile(_conversations[index]);
+                  },
+                ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _loading ? null : _startNewConversation,
         tooltip: 'Nowa rozmowa',
-        child: const Icon(Icons.add_comment),
+        backgroundColor: Colors.indigo,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

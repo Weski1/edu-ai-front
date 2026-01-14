@@ -17,14 +17,14 @@ class QuizGenerationScreen extends StatefulWidget {
 class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
   List<Teacher> _teachers = [];
   List<Map<String, dynamic>> _conversations = [];
-  
+
   Teacher? _selectedTeacher;
   int? _selectedConversationId;
   int _questionCount = 10;
   DifficultyLevel _selectedDifficulty = DifficultyLevel.medium;
   List<String> _specificTopics = [];
   final TextEditingController _topicController = TextEditingController();
-  
+
   bool _isLoadingTeachers = true;
   bool _isLoadingConversations = false;
   bool _isGenerating = false;
@@ -48,9 +48,9 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
         _isLoadingTeachers = true;
         _error = null;
       });
-      
+
       final result = await TeachersApiService.fetch();
-      
+
       setState(() {
         _teachers = result.items;
         _isLoadingTeachers = false;
@@ -70,25 +70,31 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
         _selectedConversationId = null;
         _conversations = [];
       });
-      
+
       print('=== DEBUG LOADING CONVERSATIONS ===');
-      print('Loading conversations for teacher: ${teacher.name} (ID: ${teacher.id})');
+      print(
+        'Loading conversations for teacher: ${teacher.name} (ID: ${teacher.id})',
+      );
       print('Selected Teacher ID: ${teacher.id}');
       print('Expected teacher_id in results: ${teacher.id}');
-      
+
       final token = await AuthService.getSavedToken();
-      print('Token: ${token != null ? token.substring(0, 20) + '...' : 'null'}');
-      
+      print(
+        'Token: ${token != null ? token.substring(0, 20) + '...' : 'null'}',
+      );
+
       // Najpierw spróbujmy z dedykowanym endpointem
       try {
         final conversations = await ChatApiService.getConversationsByTeacher(
           teacherId: teacher.id,
           token: token,
         );
-        
-        print('Loaded ${conversations.length} conversations from /chat/conversations');
+
+        print(
+          'Loaded ${conversations.length} conversations from /chat/conversations',
+        );
         print('Conversations raw data: $conversations');
-        
+
         // Debug: sprawdźmy szczegółowo każdą konwersację
         for (int i = 0; i < conversations.length; i++) {
           final conv = conversations[i];
@@ -99,17 +105,18 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
           print('  - title: ${conv['title']}');
           print('  - created_at: ${conv['created_at']}');
         }
-        
+
         // TYMCZASOWE ROZWIĄZANIE: Filtruj po stronie frontendu
-        final filteredConversations = conversations.where((conv) => 
-          conv['teacher_id'] == teacher.id
-        ).toList();
-        
+        final filteredConversations =
+            conversations
+                .where((conv) => conv['teacher_id'] == teacher.id)
+                .toList();
+
         print('=== AFTER FRONTEND FILTERING ===');
         print('Original conversations count: ${conversations.length}');
         print('Filtered conversations count: ${filteredConversations.length}');
         print('Showing only conversations with teacher_id: ${teacher.id}');
-        
+
         setState(() {
           _conversations = filteredConversations;
           _isLoadingConversations = false;
@@ -119,26 +126,28 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
         print('Error with /chat/conversations endpoint: $e');
         print('Trying fallback method...');
       }
-      
+
       // Fallback: użyj mock data z istniejącymi ID konwersacji
       print('Using fallback mock conversations');
-      
+
       setState(() {
         _conversations = [
           {
             'id': 1,
             'teacher_id': teacher.id,
             'title': 'Konwersacja z ${teacher.name}',
-            'created_at': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+            'created_at':
+                DateTime.now()
+                    .subtract(const Duration(days: 1))
+                    .toIso8601String(),
           },
         ];
         _isLoadingConversations = false;
       });
-      
     } catch (e) {
       print('=== ERROR LOADING CONVERSATIONS ===');
       print('Error: $e');
-      
+
       // Sprawdź czy to błąd tokenu
       if (AuthService.handleTokenError(e.toString())) {
         setState(() {
@@ -147,7 +156,9 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Sesja wygasła. Musisz się zalogować ponownie.'),
+              content: const Text(
+                'Sesja wygasła. Musisz się zalogować ponownie.',
+              ),
               duration: const Duration(seconds: 5),
               action: SnackBarAction(
                 label: 'Zamknij',
@@ -199,39 +210,43 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
 
       final quiz = await QuizApiService.generateQuiz(request);
       print('Quiz generated successfully: ${quiz.title}');
-      
+
       if (mounted) {
         // Pokaż dialog sukcesu
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Quiz wygenerowany!'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Tytuł: ${quiz.title}'),
-                Text('Przedmiot: ${quiz.subject}'),
-                Text('Poziom: ${quiz.difficultyLevel.displayName}'),
-                Text('Pytania: ${quiz.totalQuestions}'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Zamknij dialog
-                  Navigator.pop(context, true); // Wróć do listy quizów z wynikiem true
-                },
-                child: const Text('OK'),
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Quiz wygenerowany!'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Tytuł: ${quiz.title}'),
+                    Text('Przedmiot: ${quiz.subject}'),
+                    Text('Poziom: ${quiz.difficultyLevel.displayName}'),
+                    Text('Pytania: ${quiz.totalQuestions}'),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Zamknij dialog
+                      Navigator.pop(
+                        context,
+                        true,
+                      ); // Wróć do listy quizów z wynikiem true
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
               ),
-            ],
-          ),
         );
       }
     } catch (e) {
       print('=== QUIZ GENERATION ERROR ===');
       print('Error: $e');
-      
+
       // Sprawdź czy to błąd tokenu
       if (AuthService.handleTokenError(e.toString())) {
         setState(() {
@@ -241,7 +256,9 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Sesja wygasła. Musisz się zalogować ponownie.'),
+              content: const Text(
+                'Sesja wygasła. Musisz się zalogować ponownie.',
+              ),
               duration: const Duration(seconds: 5),
               action: SnackBarAction(
                 label: 'Zamknij',
@@ -283,14 +300,11 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Generuj Quiz'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-      ),
-      body: _isLoadingTeachers
-          ? const Center(child: CircularProgressIndicator())
-          : _buildContent(),
+      appBar: AppBar(title: const Text('Generuj Quiz')),
+      body:
+          _isLoadingTeachers
+              ? const Center(child: CircularProgressIndicator())
+              : _buildContent(),
     );
   }
 
@@ -309,10 +323,7 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                _error!,
-                textAlign: TextAlign.center,
-              ),
+              child: Text(_error!, textAlign: TextAlign.center),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -339,22 +350,22 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
                   // Wybór nauczyciela
                   _buildTeacherSelection(),
                   const SizedBox(height: 24),
-                  
+
                   // Wybór konwersacji
                   if (_selectedTeacher != null) ...[
                     _buildConversationSelection(),
                     const SizedBox(height: 24),
                   ],
-                  
+
                   // Ustawienia quizu
                   if (_selectedConversationId != null) ...[
                     _buildQuizSettings(),
                     const SizedBox(height: 24),
-                    
+
                     // Konkretne tematy
                     _buildSpecificTopics(),
                     const SizedBox(height: 32),
-                    
+
                     // Przycisk generowania
                     _buildGenerateButton(),
                     const SizedBox(height: 16), // Dodatkowy padding na końcu
@@ -377,20 +388,33 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
           children: [
             const Text(
               'Wybierz nauczyciela',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             if (_teachers.isEmpty)
               const Text('Brak dostępnych nauczycieli')
             else
-              ...(_teachers.map((teacher) => RadioListTile<Teacher>(
-                title: Text(teacher.name),
-                subtitle: Text(teacher.subject ?? 'Brak przedmiotu'),
-                value: teacher,
-                groupValue: _selectedTeacher,
+              DropdownButtonFormField<Teacher>(
+                decoration: const InputDecoration(
+                  labelText: 'Nauczyciel',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+                value: _selectedTeacher,
+                isExpanded: true,
+                hint: const Text('Wybierz nauczyciela'),
+                items:
+                    _teachers.map((teacher) {
+                      return DropdownMenuItem<Teacher>(
+                        value: teacher,
+                        child: Text(
+                          '${teacher.name} (${teacher.subject ?? "Brak przedmiotu"})',
+                        ),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedTeacher = value;
@@ -401,7 +425,7 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
                     _loadConversationsForTeacher(value);
                   }
                 },
-              ))),
+              ),
           ],
         ),
       ),
@@ -417,10 +441,7 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
           children: [
             const Text(
               'Wybierz konwersację',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             if (_isLoadingConversations)
@@ -436,24 +457,27 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
                 value: _selectedConversationId,
                 isExpanded: true,
                 menuMaxHeight: 300, // Zmniejszona wysokość menu
-                items: _conversations.map((conversation) {
-                  final conversationObj = Conversation.fromJson(conversation);
-                  return DropdownMenuItem<int>(
-                    value: conversation['id'],
-                    child: SizedBox(
-                      height: 40,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '${conversationObj.displayTitle} (${_formatDate(conversationObj.createdAt)})',
-                          style: const TextStyle(fontSize: 13),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                items:
+                    _conversations.map((conversation) {
+                      final conversationObj = Conversation.fromJson(
+                        conversation,
+                      );
+                      return DropdownMenuItem<int>(
+                        value: conversation['id'],
+                        child: SizedBox(
+                          height: 40,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '${conversationObj.displayTitle} (${_formatDate(conversationObj.createdAt)})',
+                              style: const TextStyle(fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedConversationId = value;
@@ -475,30 +499,26 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
           children: [
             const Text(
               'Ustawienia quizu',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             // Liczba pytań
             Row(
               children: [
-                const Expanded(
-                  child: Text('Liczba pytań:'),
-                ),
+                const Expanded(child: Text('Liczba pytań:')),
                 SizedBox(
                   width: 80,
                   child: DropdownButton<int>(
                     value: _questionCount,
                     isExpanded: true,
-                    items: [5, 10, 15, 20, 25].map((count) {
-                      return DropdownMenuItem(
-                        value: count,
-                        child: Text(count.toString()),
-                      );
-                    }).toList(),
+                    items:
+                        [5, 10, 15, 20, 25].map((count) {
+                          return DropdownMenuItem(
+                            value: count,
+                            child: Text(count.toString()),
+                          );
+                        }).toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
@@ -511,7 +531,7 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Poziom trudności
             const Text('Poziom trudności:'),
             const SizedBox(height: 8),
@@ -544,10 +564,7 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
           children: [
             const Text(
               'Konkretne tematy (opcjonalne)',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -555,7 +572,7 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 12),
-            
+
             // Pole dodawania tematu
             Row(
               children: [
@@ -577,7 +594,7 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Lista dodanych tematów
             if (_specificTopics.isNotEmpty) ...[
               const Text('Dodane tematy:'),
@@ -585,13 +602,14 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _specificTopics.map((topic) {
-                  return Chip(
-                    label: Text(topic),
-                    onDeleted: () => _removeSpecificTopic(topic),
-                    deleteIcon: const Icon(Icons.close),
-                  );
-                }).toList(),
+                children:
+                    _specificTopics.map((topic) {
+                      return Chip(
+                        label: Text(topic),
+                        onDeleted: () => _removeSpecificTopic(topic),
+                        deleteIcon: const Icon(Icons.close),
+                      );
+                    }).toList(),
               ),
             ],
           ],
@@ -601,41 +619,42 @@ class _QuizGenerationScreenState extends State<QuizGenerationScreen> {
   }
 
   Widget _buildGenerateButton() {
-    final canGenerate = _selectedTeacher != null && 
-                       _selectedConversationId != null && 
-                       !_isGenerating;
-    
+    final canGenerate =
+        _selectedTeacher != null &&
+        _selectedConversationId != null &&
+        !_isGenerating;
+
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
+      child: FilledButton(
         onPressed: canGenerate ? _generateQuiz : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
+        style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        child: _isGenerating
-            ? const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        child:
+            _isGenerating
+                ? const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 12),
-                  Text('Generowanie quizu...'),
-                ],
-              )
-            : const Text(
-                'Wygeneruj Quiz',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                    SizedBox(width: 12),
+                    Text('Generowanie quizu...'),
+                  ],
+                )
+                : const Text(
+                  'Wygeneruj Quiz',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              ),
       ),
     );
   }

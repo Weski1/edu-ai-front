@@ -45,9 +45,9 @@ class _TeachersScreenState extends State<TeachersScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Błąd pobierania: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Błąd pobierania: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -62,12 +62,13 @@ class _TeachersScreenState extends State<TeachersScreen> {
   }
 
   void _openTeacherConversations(Teacher teacher) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ConversationListScreen(
-        teacher: teacher,
-        token: widget.token,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) =>
+                ConversationListScreen(teacher: teacher, token: widget.token),
       ),
-    ));
+    );
   }
 
   @override
@@ -104,9 +105,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
               return Padding(
                 padding: const EdgeInsets.all(16),
                 child: Center(
-                  child: _nextOffset == null
-                      ? const Text('To już wszystko ✨')
-                      : const CircularProgressIndicator(),
+                  child:
+                      _nextOffset == null
+                          ? const Text('To już wszystko')
+                          : const CircularProgressIndicator(),
                 ),
               );
             }

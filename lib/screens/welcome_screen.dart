@@ -70,7 +70,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Witaj w EduAI 👋',
+              'Witaj w EduAI',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 28,

@@ -130,19 +130,23 @@ class Quiz {
       teacherId: json['teacher_id'] as int? ?? 0,
       title: json['title'] as String? ?? 'Untitled Quiz',
       subject: json['subject'] as String? ?? 'Unknown',
-      difficultyLevel: json['difficulty_level'] != null 
-          ? DifficultyLevel.fromString(json['difficulty_level'] as String)
-          : DifficultyLevel.medium,
+      difficultyLevel:
+          json['difficulty_level'] != null
+              ? DifficultyLevel.fromString(json['difficulty_level'] as String)
+              : DifficultyLevel.medium,
       totalQuestions: json['total_questions'] as int? ?? 0,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : DateTime.now(),
       teacherName: json['teacher_name'] as String? ?? '',
-      questions: (json['questions'] as List<dynamic>?)
+      questions:
+          (json['questions'] as List<dynamic>?)
               ?.map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
               .toList() ??
           [],
-      attempts: (json['attempts'] as List<dynamic>?)
+      attempts:
+          (json['attempts'] as List<dynamic>?)
               ?.map((a) => QuizAttempt.fromJson(a as Map<String, dynamic>))
               .toList() ??
           [],
@@ -200,9 +204,10 @@ class QuizQuestion {
       id: json['id'] as int? ?? 0,
       quizId: json['quiz_id'] as int? ?? 0,
       questionNumber: json['question_number'] as int? ?? 1,
-      questionType: json['question_type'] != null 
-          ? QuestionType.fromString(json['question_type'] as String)
-          : QuestionType.multipleChoice,
+      questionType:
+          json['question_type'] != null
+              ? QuestionType.fromString(json['question_type'] as String)
+              : QuestionType.multipleChoice,
       questionText: json['question_text'] as String? ?? '',
       correctAnswer: json['correct_answer'] as String? ?? '',
       options: json['options'] as Map<String, dynamic>?,
@@ -267,18 +272,21 @@ class QuizAttempt {
       quizId: json['quiz_id'] as int? ?? 0,
       userId: json['user_id'] as int? ?? 0,
       attemptNumber: json['attempt_number'] as int? ?? 1,
-      startedAt: json['started_at'] != null
-          ? DateTime.parse(json['started_at'] as String)
-          : DateTime.now(),
-      completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'] as String)
-          : null,
+      startedAt:
+          json['started_at'] != null
+              ? DateTime.parse(json['started_at'] as String)
+              : DateTime.now(),
+      completedAt:
+          json['completed_at'] != null
+              ? DateTime.parse(json['completed_at'] as String)
+              : null,
       score: (json['score'] as num?)?.toDouble(),
       maxScore: (json['max_score'] as num?)?.toDouble() ?? 0.0,
       percentage: (json['percentage'] as num?)?.toDouble(),
       timeSpentSeconds: json['time_spent_seconds'] as int?,
       isCompleted: json['is_completed'] as bool? ?? false,
-      answers: (json['answers'] as List<dynamic>?)
+      answers:
+          (json['answers'] as List<dynamic>?)
               ?.map((a) => QuizAnswer.fromJson(a as Map<String, dynamic>))
               .toList() ??
           [],
@@ -335,9 +343,10 @@ class QuizAnswer {
       userAnswer: json['user_answer'] as String?,
       isCorrect: json['is_correct'] as bool? ?? false,
       pointsEarned: (json['points_earned'] as num?)?.toDouble() ?? 0.0,
-      answeredAt: json['answered_at'] != null
-          ? DateTime.parse(json['answered_at'] as String)
-          : DateTime.now(),
+      answeredAt:
+          json['answered_at'] != null
+              ? DateTime.parse(json['answered_at'] as String)
+              : DateTime.now(),
       aiFeedback: json['ai_feedback'] as String?,
       aiStrengths: json['ai_strengths'] as String?,
       aiImprovements: json['ai_improvements'] as String?,
@@ -389,13 +398,15 @@ class QuizListItem {
       id: json['id'] as int? ?? 0,
       title: json['title'] as String? ?? 'Untitled Quiz',
       subject: json['subject'] as String? ?? 'Unknown',
-      difficultyLevel: json['difficulty_level'] != null 
-          ? DifficultyLevel.fromString(json['difficulty_level'] as String)
-          : DifficultyLevel.medium,
+      difficultyLevel:
+          json['difficulty_level'] != null
+              ? DifficultyLevel.fromString(json['difficulty_level'] as String)
+              : DifficultyLevel.medium,
       totalQuestions: json['total_questions'] as int? ?? 0,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : DateTime.now(),
       teacherName: json['teacher_name'] as String? ?? 'Unknown Teacher',
       bestScore: (json['best_score'] as num?)?.toDouble(),
       attemptsCount: json['attempts_count'] as int? ?? 0,
@@ -435,9 +446,7 @@ class QuizAttemptStart {
   QuizAttemptStart({required this.quizId});
 
   Map<String, dynamic> toJson() {
-    return {
-      'quiz_id': quizId,
-    };
+    return {'quiz_id': quizId};
   }
 }
 
@@ -484,6 +493,7 @@ class QuizAttemptSubmit {
 class QuizAttemptResult {
   final int id;
   final int quizId;
+  final String? quizTitle;
   final double score;
   final double maxScore;
   final double percentage;
@@ -491,10 +501,12 @@ class QuizAttemptResult {
   final int correctAnswers;
   final int totalQuestions;
   final List<QuizAnswer> answers;
+  final DateTime? completedAt;
 
   QuizAttemptResult({
     required this.id,
     required this.quizId,
+    this.quizTitle,
     required this.score,
     required this.maxScore,
     required this.percentage,
@@ -502,21 +514,35 @@ class QuizAttemptResult {
     required this.correctAnswers,
     required this.totalQuestions,
     required this.answers,
+    this.completedAt,
   });
 
   factory QuizAttemptResult.fromJson(Map<String, dynamic> json) {
     return QuizAttemptResult(
       id: json['id'] as int? ?? 0,
       quizId: json['quiz_id'] as int? ?? 0,
+      quizTitle: json['quiz_title'] as String?,
       score: json['score'] != null ? (json['score'] as num).toDouble() : 0.0,
-      maxScore: json['max_score'] != null ? (json['max_score'] as num).toDouble() : 0.0,
-      percentage: json['percentage'] != null ? (json['percentage'] as num).toDouble() : 0.0,
+      maxScore:
+          json['max_score'] != null
+              ? (json['max_score'] as num).toDouble()
+              : 0.0,
+      percentage:
+          json['percentage'] != null
+              ? (json['percentage'] as num).toDouble()
+              : 0.0,
       timeSpentSeconds: json['time_spent_seconds'] as int? ?? 0,
       correctAnswers: json['correct_answers'] as int? ?? 0,
       totalQuestions: json['total_questions'] as int? ?? 0,
-      answers: (json['answers'] as List<dynamic>?)
-          ?.map((a) => QuizAnswer.fromJson(a as Map<String, dynamic>))
-          .toList() ?? [],
+      answers:
+          (json['answers'] as List<dynamic>?)
+              ?.map((a) => QuizAnswer.fromJson(a as Map<String, dynamic>))
+              .toList() ??
+          [],
+      completedAt:
+          json['completed_at'] != null
+              ? DateTime.parse(json['completed_at'] as String)
+              : null,
     );
   }
 }
@@ -525,8 +551,5 @@ class QuizReviewData {
   final Quiz quiz;
   final QuizAttemptResult attemptResult;
 
-  QuizReviewData({
-    required this.quiz,
-    required this.attemptResult,
-  });
+  QuizReviewData({required this.quiz, required this.attemptResult});
 }

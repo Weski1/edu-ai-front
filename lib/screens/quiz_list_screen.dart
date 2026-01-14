@@ -7,7 +7,7 @@ import 'quiz_attempts_detail_screen.dart';
 
 class QuizListScreen extends StatefulWidget {
   final bool showAppBar;
-  
+
   const QuizListScreen({super.key, this.showAppBar = true});
 
   @override
@@ -19,16 +19,23 @@ class _QuizListScreenState extends State<QuizListScreen> {
   bool _isLoading = true;
   String? _error;
   String _selectedSubject = 'Wszystkie';
-  final List<String> _subjects = ['Wszystkie', 'Matematyka', 'Historia', 'Angielski', 'Biologia'];
+  final List<String> _subjects = [
+    'Wszystkie',
+    'Matematyka',
+    'Historia',
+    'Angielski',
+    'Biologia',
+  ];
 
   void _navigateToQuizReview(QuizListItem quiz) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => QuizAttemptsDetailScreen(
-          quizId: quiz.id,
-          quizTitle: quiz.title,
-        ),
+        builder:
+            (context) => QuizAttemptsDetailScreen(
+              quizId: quiz.id,
+              quizTitle: quiz.title,
+            ),
       ),
     );
   }
@@ -54,7 +61,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
         String backendSubject = _mapSubjectToBackend(_selectedSubject);
         quizzes = await QuizApiService.getSubjectQuizzes(backendSubject);
       }
-      
+
       setState(() {
         _quizzes = quizzes;
         _isLoading = false;
@@ -86,18 +93,20 @@ class _QuizListScreenState extends State<QuizListScreen> {
     try {
       final result = await QuizApiService.deleteQuiz(quizId);
       _loadQuizzes(); // Reload list
-      
+
       if (mounted) {
         String message = result['message'] ?? 'Quiz usunięty pomyślnie';
-        
+
         // Dodaj informacje o usuniętych elementach jeśli są dostępne
-        if (result['attempts_deleted'] != null && result['attempts_deleted'] > 0) {
+        if (result['attempts_deleted'] != null &&
+            result['attempts_deleted'] > 0) {
           message += '\n• Usuniętych prób: ${result['attempts_deleted']}';
         }
-        if (result['questions_deleted'] != null && result['questions_deleted'] > 0) {
+        if (result['questions_deleted'] != null &&
+            result['questions_deleted'] > 0) {
           message += '\n• Usuniętych pytań: ${result['questions_deleted']}';
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -117,19 +126,25 @@ class _QuizListScreenState extends State<QuizListScreen> {
       if (mounted) {
         String errorMessage;
         Color backgroundColor = Colors.red;
-        
-        if (e.toString().contains('404') || e.toString().contains('not found')) {
-          errorMessage = 'Quiz nie został znaleziony. Możliwe że został już usunięty.';
-        } else if (e.toString().contains('403') || e.toString().contains('forbidden')) {
+
+        if (e.toString().contains('404') ||
+            e.toString().contains('not found')) {
+          errorMessage =
+              'Quiz nie został znaleziony. Możliwe że został już usunięty.';
+        } else if (e.toString().contains('403') ||
+            e.toString().contains('forbidden')) {
           errorMessage = 'Brak uprawnień do usunięcia tego quizu.';
-        } else if (e.toString().contains('network') || e.toString().contains('connection')) {
-          errorMessage = 'Błąd połączenia z serwerem. Sprawdź połączenie internetowe.';
+        } else if (e.toString().contains('network') ||
+            e.toString().contains('connection')) {
+          errorMessage =
+              'Błąd połączenia z serwerem. Sprawdź połączenie internetowe.';
         } else if (e.toString().contains('500')) {
-          errorMessage = 'Błąd serwera podczas usuwania quizu. Spróbuj ponownie później.';
+          errorMessage =
+              'Błąd serwera podczas usuwania quizu. Spróbuj ponownie później.';
         } else {
           errorMessage = 'Błąd podczas usuwania quizu: ${e.toString()}';
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -151,27 +166,30 @@ class _QuizListScreenState extends State<QuizListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: widget.showAppBar ? AppBar(
-        title: const Text('Moje Quizy'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const QuizGenerationScreen(),
-                ),
-              );
-              if (result == true) {
-                _loadQuizzes();
-              }
-            },
-          ),
-        ],
-      ) : null,
+      appBar:
+          widget.showAppBar
+              ? AppBar(
+                title: const Text('Moje Quizy'),
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const QuizGenerationScreen(),
+                        ),
+                      );
+                      if (result == true) {
+                        _loadQuizzes();
+                      }
+                    },
+                  ),
+                ],
+              )
+              : null,
       body: Column(
         children: [
           // Filtr przedmiotów
@@ -183,12 +201,13 @@ class _QuizListScreenState extends State<QuizListScreen> {
                 labelText: 'Filtruj po przedmiocie',
                 border: OutlineInputBorder(),
               ),
-              items: _subjects.map((subject) {
-                return DropdownMenuItem(
-                  value: subject,
-                  child: Text(subject),
-                );
-              }).toList(),
+              items:
+                  _subjects.map((subject) {
+                    return DropdownMenuItem(
+                      value: subject,
+                      child: Text(subject),
+                    );
+                  }).toList(),
               onChanged: (value) {
                 setState(() {
                   _selectedSubject = value!;
@@ -198,9 +217,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
             ),
           ),
           // Lista quizów
-          Expanded(
-            child: _buildContent(),
-          ),
+          Expanded(child: _buildContent()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -216,16 +233,14 @@ class _QuizListScreenState extends State<QuizListScreen> {
           }
         },
         backgroundColor: Colors.indigo,
-        child: const Icon(Icons.quiz, color: Colors.white),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
@@ -258,10 +273,7 @@ class _QuizListScreenState extends State<QuizListScreen> {
           children: [
             const Icon(Icons.quiz, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text(
-              'Brak quizów',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('Brak quizów', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             const Text(
               'Zacznij konwersację z nauczycielem\ni wygeneruj swój pierwszy quiz!',
@@ -330,34 +342,41 @@ class _QuizListScreenState extends State<QuizListScreen> {
                         _showQuizInfo(quiz);
                       }
                     },
-                    itemBuilder: (context) => [
-                      // Zawsze pokazuj opcję usuwania
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.delete, 
-                            color: quiz.attemptsCount == 0 ? Colors.red : Colors.orange,
+                    itemBuilder:
+                        (context) => [
+                          // Zawsze pokazuj opcję usuwania
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.delete,
+                                color:
+                                    quiz.attemptsCount == 0
+                                        ? Colors.red
+                                        : Colors.orange,
+                              ),
+                              title: Text(
+                                quiz.attemptsCount == 0
+                                    ? 'Usuń quiz'
+                                    : 'Usuń quiz (${quiz.attemptsCount} prób)',
+                              ),
+                              contentPadding: EdgeInsets.zero,
+                            ),
                           ),
-                          title: Text(
-                            quiz.attemptsCount == 0 
-                              ? 'Usuń quiz' 
-                              : 'Usuń quiz (${quiz.attemptsCount} prób)',
+                          // Opcja informacji o quizie
+                          const PopupMenuItem(
+                            value: 'info',
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.info_outline,
+                                color: Colors.blue,
+                              ),
+                              title: Text('Szczegóły quizu'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
                           ),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      // Opcja informacji o quizie
-                      const PopupMenuItem(
-                        value: 'info',
-                        child: ListTile(
-                          leading: Icon(Icons.info_outline, color: Colors.blue),
-                          title: Text('Szczegóły quizu'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      // Dodatkowe opcje można dodać tutaj w przyszłości
-                    ],
+                          // Dodatkowe opcje można dodać tutaj w przyszłości
+                        ],
                   ),
                 ],
               ),
@@ -451,136 +470,144 @@ class _QuizListScreenState extends State<QuizListScreen> {
   void _showQuizOptions(QuizListItem quiz) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.play_arrow),
-            title: const Text('Rozpocznij quiz'),
-            onTap: () async {
-              Navigator.pop(context);
-              try {
-                final fullQuiz = await QuizApiService.getQuiz(quiz.id);
-                if (mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => QuizAttemptScreen(quiz: fullQuiz),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Błąd podczas ładowania quizu: $e')),
-                  );
-                }
-              }
-            },
+      builder:
+          (context) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.play_arrow),
+                title: const Text('Rozpocznij quiz'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    final fullQuiz = await QuizApiService.getQuiz(quiz.id);
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => QuizAttemptScreen(quiz: fullQuiz),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Błąd podczas ładowania quizu: $e'),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+              if (quiz.bestScore != null) ...[
+                ListTile(
+                  leading: const Icon(Icons.assessment),
+                  title: const Text('Zobacz najlepszy wynik'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showBestScoreDetails(quiz);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.visibility),
+                  title: const Text('Przegląd wyników'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToQuizReview(quiz);
+                  },
+                ),
+              ],
+              ListTile(
+                leading: const Icon(Icons.info),
+                title: const Text('Szczegóły quiz'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showQuizDetails(quiz);
+                },
+              ),
+            ],
           ),
-          if (quiz.bestScore != null) ...[
-            ListTile(
-              leading: const Icon(Icons.assessment),
-              title: const Text('Zobacz najlepszy wynik'),
-              onTap: () {
-                Navigator.pop(context);
-                _showBestScoreDetails(quiz);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.visibility),
-              title: const Text('Przegląd wyników'),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateToQuizReview(quiz);
-              },
-            ),
-          ],
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('Szczegóły quiz'),
-            onTap: () {
-              Navigator.pop(context);
-              _showQuizDetails(quiz);
-            },
-          ),
-        ],
-      ),
     );
   }
 
   void _showBestScoreDetails(QuizListItem quiz) {
     if (quiz.bestScore == null) return;
-    
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Najlepszy wynik - ${quiz.title}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      builder:
+          (context) => AlertDialog(
+            title: Text('Najlepszy wynik - ${quiz.title}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.star,
-                  color: _getScoreColor(quiz.bestScore!),
-                  size: 24,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: _getScoreColor(quiz.bestScore!),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${quiz.bestScore!.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: _getScoreColor(quiz.bestScore!),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(height: 16),
+                Text('Liczba prób: ${quiz.attemptsCount}'),
+                Text('Pytania: ${quiz.totalQuestions}'),
+                const SizedBox(height: 16),
                 Text(
-                  '${quiz.bestScore!.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: _getScoreColor(quiz.bestScore!),
+                  _getScoreMessage(quiz.bestScore!),
+                  style: const TextStyle(
+                    fontStyle: FontStyle.italic,
+                    fontSize: 14,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text('Liczba prób: ${quiz.attemptsCount}'),
-            Text('Pytania: ${quiz.totalQuestions}'),
-            const SizedBox(height: 16),
-            Text(
-              _getScoreMessage(quiz.bestScore!),
-              style: const TextStyle(
-                fontStyle: FontStyle.italic,
-                fontSize: 14,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Zamknij'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Zamknij'),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    final fullQuiz = await QuizApiService.getQuiz(quiz.id);
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => QuizAttemptScreen(quiz: fullQuiz),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Błąd podczas ładowania quizu: $e'),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Spróbuj ponownie'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                final fullQuiz = await QuizApiService.getQuiz(quiz.id);
-                if (mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => QuizAttemptScreen(quiz: fullQuiz),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Błąd podczas ładowania quizu: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Spróbuj ponownie'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -595,29 +622,32 @@ class _QuizListScreenState extends State<QuizListScreen> {
   void _showQuizDetails(QuizListItem quiz) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(quiz.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Przedmiot: ${quiz.subject}'),
-            Text('Poziom: ${quiz.difficultyLevel.displayName}'),
-            Text('Nauczyciel: ${quiz.teacherName}'),
-            Text('Liczba pytań: ${quiz.totalQuestions}'),
-            Text('Liczba prób: ${quiz.attemptsCount}'),
-            if (quiz.bestScore != null)
-              Text('Najlepszy wynik: ${quiz.bestScore!.toStringAsFixed(1)}%'),
-            Text('Utworzono: ${_formatDate(quiz.createdAt)}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Zamknij'),
+      builder:
+          (context) => AlertDialog(
+            title: Text(quiz.title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Przedmiot: ${quiz.subject}'),
+                Text('Poziom: ${quiz.difficultyLevel.displayName}'),
+                Text('Nauczyciel: ${quiz.teacherName}'),
+                Text('Liczba pytań: ${quiz.totalQuestions}'),
+                Text('Liczba prób: ${quiz.attemptsCount}'),
+                if (quiz.bestScore != null)
+                  Text(
+                    'Najlepszy wynik: ${quiz.bestScore!.toStringAsFixed(1)}%',
+                  ),
+                Text('Utworzono: ${_formatDate(quiz.createdAt)}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Zamknij'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -626,105 +656,109 @@ class _QuizListScreenState extends State<QuizListScreen> {
     String content;
     String deleteButtonText;
     Color deleteButtonColor;
-    
+
     if (quiz.attemptsCount == 0) {
       title = 'Usuń quiz';
-      content = 'Czy na pewno chcesz usunąć quiz "${quiz.title}"?\n'
-                'Ta operacja jest nieodwracalna.';
+      content =
+          'Czy na pewno chcesz usunąć quiz "${quiz.title}"?\n'
+          'Ta operacja jest nieodwracalna.';
       deleteButtonText = 'Usuń';
       deleteButtonColor = Colors.red;
     } else {
       title = 'Usuń quiz z próbami';
-      content = 'Quiz "${quiz.title}" ma ${quiz.attemptsCount} ${quiz.attemptsCount == 1 ? "próbę" : "prób"}.\n\n'
-                'Usunięcie quizu spowoduje również usunięcie:\n'
-                '• Wszystkich ${quiz.attemptsCount} prób\n'
-                '• Wszystkich odpowiedzi i wyników\n'
-                '• Całej historii rozwiązywania\n\n'
-                'Ta operacja jest NIEODWRACALNA!\n\n'
-                'Czy na pewno chcesz kontynuować?';
+      content =
+          'Quiz "${quiz.title}" ma ${quiz.attemptsCount} ${quiz.attemptsCount == 1 ? "próbę" : "prób"}.\n\n'
+          'Usunięcie quizu spowoduje również usunięcie:\n'
+          '• Wszystkich ${quiz.attemptsCount} prób\n'
+          '• Wszystkich odpowiedzi i wyników\n'
+          '• Całej historii rozwiązywania\n\n'
+          'Ta operacja jest NIEODWRACALNA!\n\n'
+          'Czy na pewno chcesz kontynuować?';
       deleteButtonText = 'Usuń wszystko';
       deleteButtonColor = Colors.red;
     }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: deleteButtonColor, size: 24),
-            const SizedBox(width: 8),
-            Text(title),
-          ],
-        ),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Anuluj'),
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning, color: deleteButtonColor, size: 24),
+                const SizedBox(width: 8),
+                Text(title),
+              ],
+            ),
+            content: Text(content),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Anuluj'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteQuiz(quiz.id);
+                },
+                style: TextButton.styleFrom(foregroundColor: deleteButtonColor),
+                child: Text(deleteButtonText),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteQuiz(quiz.id);
-            },
-            style: TextButton.styleFrom(foregroundColor: deleteButtonColor),
-            child: Text(deleteButtonText),
-          ),
-        ],
-      ),
     );
   }
 
   void _showQuizInfo(QuizListItem quiz) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Informacje o quizie'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Quiz: "${quiz.title}"',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Informacje o quizie'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Quiz: "${quiz.title}"',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text('Liczba prób: ${quiz.attemptsCount}'),
+                const SizedBox(height: 8),
+                if (quiz.attemptsCount > 0) ...[
+                  const Icon(Icons.warning, color: Colors.orange, size: 20),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Ten quiz nie może być usunięty, ponieważ ma już rozwiązane próby. '
+                    'Quizy z wynikami są chronione przed usunięciem, aby zachować historię wyników.',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                ] else ...[
+                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Ten quiz może być usunięty, ponieważ nie ma jeszcze żadnych prób.',
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 8),
-            Text('Liczba prób: ${quiz.attemptsCount}'),
-            const SizedBox(height: 8),
-            if (quiz.attemptsCount > 0) ...[
-              const Icon(Icons.warning, color: Colors.orange, size: 20),
-              const SizedBox(height: 4),
-              const Text(
-                'Ten quiz nie może być usunięty, ponieważ ma już rozwiązane próby. '
-                'Quizy z wynikami są chronione przed usunięciem, aby zachować historię wyników.',
-                style: TextStyle(color: Colors.orange),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
               ),
-            ] else ...[
-              const Icon(Icons.check_circle, color: Colors.green, size: 20),
-              const SizedBox(height: 4),
-              const Text(
-                'Ten quiz może być usunięty, ponieważ nie ma jeszcze żadnych prób.',
-                style: TextStyle(color: Colors.green),
-              ),
+              if (quiz.attemptsCount == 0)
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showDeleteConfirmation(quiz);
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Usuń quiz'),
+                ),
             ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
           ),
-          if (quiz.attemptsCount == 0)
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showDeleteConfirmation(quiz);
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Usuń quiz'),
-            ),
-        ],
-      ),
     );
   }
 
