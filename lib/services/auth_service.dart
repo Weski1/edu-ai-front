@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:praca_inzynierska_front/services/api_client_service.dart';
+import 'package:flutter/material.dart';
+import 'package:praca_inzynierska_front/config/api_config.dart';
+import 'package:praca_inzynierska_front/config/navigation.dart';
+import 'package:praca_inzynierska_front/screens/login_screen.dart';
 
 class AuthService {
   /// Logowanie: wysyłamy JSON {email, password}, backend zwraca {"message", "token"}.
   static Future<String?> login(String email, String password) async {
-    final uri = Uri.parse('${ApiClient.baseUrl}/auth/login');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/login');
     try {
       final res = await http.post(
         uri,
@@ -15,7 +18,8 @@ class AuthService {
       );
 
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         final token = data['token'] as String?;
         if (token != null && token.isNotEmpty) return token;
       }
@@ -33,7 +37,7 @@ class AuthService {
     String password,
     String confirmPassword,
   ) async {
-    final uri = Uri.parse('${ApiClient.baseUrl}/auth/register');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/register');
     final res = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
@@ -77,18 +81,38 @@ class AuthService {
     await prefs.remove('token');
   }
 
+  static Future<void> logoutAndRedirect() async {
+    await logout();
+    final context = navigatorKey.currentContext;
+
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+
+    if (context != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Twoja sesja wygasła. Zaloguj się ponownie.'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   /// Sprawdź czy token jest ważny
   static Future<bool> isTokenValid() async {
     final token = await getSavedToken();
     if (token == null || token.isEmpty) return false;
-    
+
     try {
       // Dodaj debug info o tokenie
       print('=== TOKEN DEBUG ===');
       print('Token length: ${token.length}');
       print('Token start: ${token.substring(0, 50)}...');
-      
-      final uri = Uri.parse('${ApiClient.baseUrl}/auth/me');
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/auth/me');
       final res = await http.get(
         uri,
         headers: {
@@ -96,12 +120,12 @@ class AuthService {
           'Authorization': 'Bearer $token',
         },
       );
-      
+
       print('Token validation response: ${res.statusCode}');
       if (res.statusCode != 200) {
         print('Token validation error: ${utf8.decode(res.bodyBytes)}');
       }
-      
+
       return res.statusCode == 200;
     } catch (e) {
       print('Token validation exception: $e');
@@ -120,7 +144,7 @@ class AuthService {
 
   /// Sprawdź czy błąd to wygasły token i wyloguj
   static bool handleTokenError(String error) {
-    if (error.toLowerCase().contains('token') || 
+    if (error.toLowerCase().contains('token') ||
         error.toLowerCase().contains('unauthorized') ||
         error.toLowerCase().contains('wygasł')) {
       logout();
@@ -131,7 +155,7 @@ class AuthService {
 
   /// Reset hasła (opcjonalny)
   static Future<String?> requestPasswordReset(String email) async {
-    final uri = Uri.parse('${ApiClient.baseUrl}/auth/password-reset/request');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/password-reset/request');
     final res = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
@@ -150,9 +174,9 @@ class AuthService {
   static Future<Map<String, dynamic>?> getUserData() async {
     final token = await getSavedToken();
     if (token == null || token.isEmpty) return null;
-    
+
     try {
-      final uri = Uri.parse('${ApiClient.baseUrl}/auth/me');
+      final uri = Uri.parse('${ApiConfig.baseUrl}/auth/me');
       final res = await http.get(
         uri,
         headers: {
@@ -160,9 +184,10 @@ class AuthService {
           'Authorization': 'Bearer $token',
         },
       );
-      
+
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         return data;
       }
       return null;

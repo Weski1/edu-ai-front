@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'package:praca_inzynierska_front/screens/welcome_screen.dart';
+import 'package:praca_inzynierska_front/config/navigation.dart';
 import 'config/theme_config.dart';
 import 'providers/theme_provider.dart';
 
@@ -44,6 +45,7 @@ class MainApp extends StatelessWidget {
             ],
             supportedLocales: const [Locale('pl', 'PL'), Locale('en', 'US')],
 
+            navigatorKey: navigatorKey,
             home: const WelcomeScreen(),
           );
         },
