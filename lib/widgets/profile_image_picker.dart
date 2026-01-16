@@ -232,12 +232,6 @@ class _ProfileImagePickerState extends State<ProfileImagePicker> {
   Widget build(BuildContext context) {
     final fullImageUrl = _buildFullImageUrl(widget.currentImageUrl);
     
-    print('=== PROFILE IMAGE PICKER BUILD ===');
-    print('Current image URL: ${widget.currentImageUrl}');
-    print('Full image URL: $fullImageUrl');
-    print('Cache key: $_cacheKey');
-    print('Final URL: ${fullImageUrl.isNotEmpty ? '$fullImageUrl?v=$_cacheKey' : 'null'}');
-    
     return GestureDetector(
       onTap: _isUploading ? null : _showImageSourceDialog,
       child: Stack(
